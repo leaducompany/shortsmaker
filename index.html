@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>숏츠메이커</title>
+<title>쇼츠메이커</title>
 <meta name="theme-color" content="#111A3F">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="숏츠메이커">
+<meta name="apple-mobile-web-app-title" content="쇼츠메이커">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -970,6 +970,29 @@ body{background:var(--bg)}
 .srcpill{font-family:var(--display);font-weight:700;font-size:11px;padding:4px 9px;border-radius:7px;color:#fff}
 .srcpill.yt{background:#FF0033}.srcpill.ig{background:linear-gradient(45deg,#F58529,#DD2A7B 55%,#8134AF)}
 @media (max-width:560px){.linkrow .btn.cta{width:100%}}
+
+/* v9: KPI 2칸 · 모바일 입력 확대 방지 */
+.kpis.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:900px){
+  input[type=text],input[type=number],input[type=search],input[type=password],textarea,select{font-size:16px}
+  .linkrow input{font-size:16px}
+}
+@media (max-width:560px){ .kpis.two{grid-template-columns:repeat(2,minmax(0,1fr))} .kpis.two .kpi{padding:14px 16px} .kpis.two .kpi .v{font-size:24px} }
+
+/* v9: 모바일 터치 영역 키우기 */
+@media (max-width:900px){
+  .icon-btn{width:38px;height:38px}
+  .btn.sm,.btn.xs{min-height:38px;padding-top:8px;padding-bottom:8px}
+  .link{display:inline-block;padding:8px 2px}
+  .chip.sm{padding:8px 12px}
+  .ver button{padding:8px 11px}
+  .rail-btn{padding:8px 12px}
+  .frame button{width:26px;height:26px}
+  .hook{min-height:44px}
+}
+
+/* 한글 줄바꿈: 단어 중간에서 끊지 않기 */
+h1,h2,h3,h4,p,b,small,.qa b,.vbody b,.idea .it,.note span{word-break:keep-all;overflow-wrap:anywhere}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 
 </style>
@@ -1780,7 +1803,7 @@ function renderRail(){
   const cl = S.clients.map(x=>{ const cat=CATS[x.info.cat];
     return `<button class="cl" data-act="pick" data-id="${x.id}" aria-current="${v==="client"&&!!c&&x.id===c.id}">${avHTML(x)}<span><b>${h(x.info.name||"고객 정보 입력")}</b><small>${cat?h(cat.label+(x.info.sub?" · "+x.info.sub:"")):"업종 미정"} · 월 ${x.info.perMonth}편</small></span></button>`; }).join("");
   document.getElementById("rail").innerHTML = `
-    <div class="brand"><img class="logo-l" src="${LOGO_MAIN}" alt="LE:AD U COMPANY"><img class="logo-d" src="${LOGO_WHITE}" alt=""><div class="prod"><b>숏츠메이커</b><span>by 숏츠파파</span></div></div>
+    <div class="brand"><img class="logo-l" src="${LOGO_MAIN}" alt="LE:AD U COMPANY"><img class="logo-d" src="${LOGO_WHITE}" alt=""><div class="prod"><b>쇼츠메이커</b><span>by 숏츠파파</span></div></div>
     <div class="rail-sec"><button class="nav" data-act="view" data-v="home" aria-current="${v==="home"}">${IC.home}홈</button></div>
     <div class="rail-sec"><div class="rail-label">CLIENTS<button data-act="add">+ 고객 정보 입력</button></div>${cl||'<button class="rail-empty" data-act="add">+ 고객 정보 입력</button>'}</div>
     <div class="rail-sec"><div class="rail-label">TOOLS</div>
@@ -1794,7 +1817,7 @@ function renderRail(){
   const tb = document.getElementById("tabbar");
   if(tb) tb.innerHTML = [["home","홈",IC.home],["client","고객",IC.user],["lib","레퍼런스",IC.fire],["refs","영상 분석",IC.scan],["leads","내 고객",IC.mega]].map(([k,l,ic])=>`<button data-act="${k==="client"?"tabclient":"view"}" data-v="${k}" aria-current="${v===k||(k==="client"&&v==="clients")}">${ic}<span>${l}</span></button>`).join("");
   const mh = document.getElementById("mhead");
-  if(mh) mh.innerHTML = `<img class="logo-l" src="${LOGO_MAIN}" alt="LE:AD U"><img class="logo-d" src="${LOGO_WHITE}" alt=""><b>숏츠메이커</b><span class="sp"></span><button class="mai ${aiOn()?"on":aiState==="off"?"off":""}" data-act="view" data-v="settings">${aiOn()?"AI 연결됨":aiState==="off"?"AI 연결":"확인 중"}</button><button class="icon-btn" data-act="view" data-v="settings" aria-label="설정">${IC.gear}</button>`;
+  if(mh) mh.innerHTML = `<img class="logo-l" src="${LOGO_MAIN}" alt="LE:AD U"><img class="logo-d" src="${LOGO_WHITE}" alt=""><b>쇼츠메이커</b><span class="sp"></span><button class="mai ${aiOn()?"on":aiState==="off"?"off":""}" data-act="view" data-v="settings">${aiOn()?"AI 연결됨":aiState==="off"?"AI 연결":"확인 중"}</button><button class="icon-btn" data-act="view" data-v="settings" aria-label="설정">${IC.gear}</button>`;
 }
 
 /* =========================================================
@@ -1817,6 +1840,7 @@ function render(){
   m.innerHTML = `<div class="${prevView!==key?"view":""}">${html}</div>`;
   m.dataset.view = key;
   if(prevView!==key){ countUp(m); window.scrollTo({top:0}); } else if(Math.abs(window.scrollY-y)>2) window.scrollTo({top:y});
+  const sb = m.querySelector('.stepper [aria-current="true"]'); if(sb){ const bar=sb.parentElement; if(bar.scrollWidth>bar.clientWidth) bar.scrollLeft = Math.max(0, sb.offsetLeft - bar.clientWidth/2 + sb.offsetWidth/2); }
   const sh = document.getElementById("sheet"); if(sh){ sh.innerHTML = sheetHTML(); document.body.classList.toggle("sheet-open", !!sh.innerHTML); }
   fresh.clear();
 }
@@ -1861,19 +1885,16 @@ function viewHome(){
   const scripts = all.reduce((a,x)=>a+x.s.scripts,0);
   const st = [0,0,0,0,0,0]; all.forEach(x=>x.s.st.forEach((n,i)=>st[i]+=n));
   const tot = st.reduce((a,b)=>a+b,0)||1;
-  const hr = new Date().getHours(), hi = hr<12?"좋은 아침이에요":hr<18?"오늘도 순조롭게":"오늘 하루 수고 많으셨어요";
   const setup = aiState==="off" ? `<div class="setup">${IC.key}<div><b>AI를 연결하면 바로 쓸 수 있어요</b><span>Claude API 키를 한 번만 넣으면 주제·대본·제안서가 만들어집니다. 1분이면 끝나요.</span></div><button class="btn sky" data-act="view" data-v="settings">AI 연결하기 ${IC.right}</button></div>` : "";
   const quick = [["add","",IC.plus,"고객 정보 입력","입력하면 주제 20개 기획"],["view","lib",IC.fire,"레퍼런스 모아보기","지금 뜨는 전문직 숏폼"],["view","refs",IC.scan,"영상 분석","잘 된 영상의 공식 뽑기"],["leadsgo","post",IC.pen,"홍보 글 쓰기","스레드 · 인스타 · 블로그"]];
   return `${setup}
   <section class="hero"><div class="eyebrow">SHORTS MAKER · FOR PROFESSIONALS</div>
-    <h1>${h(S.me.nick)}님, ${hi}.</h1>
+    <h1>전문직 숏폼, 기획부터 납품까지 한곳에서.</h1>
     <p>고객 정보만 넣으면 주제, 대본, 촬영 가이드, 편집 브리핑, 제안서까지 이어집니다. 촬영은 고객이, 편집은 편집자가, 기획은 AI가 합니다.</p>
   </section>
   <div class="quick">${quick.map(([a,v,ic,t,d])=>`<button class="qa" data-act="${a}" ${v?`data-v="${v}" data-k="${v}"`:""}><span class="ic">${ic}</span><b>${t}</b><small>${d}</small><span class="arr">${IC.right}</span></button>`).join("")}</div>
-  <div class="kpis">
-    <div class="kpi accent"><div class="k">예상 월 매출</div><div class="v"><span data-count="${rev}">${(rev).toLocaleString()}</span><small>만 원</small></div><div class="s">고객 ${S.clients.length}곳 · VAT 별도</div></div>
-    <div class="kpi"><div class="k">이번 달 제작 목표</div><div class="v"><span data-count="${goal}">${(goal).toLocaleString()}</span><small>편</small></div><div class="s">편당 평균 ${goal?Math.round(rev/goal*10)/10:0}만 원</div></div>
-    <div class="kpi"><div class="k">대본 완료</div><div class="v"><span data-count="${scripts}">${(scripts).toLocaleString()}</span><small>편</small></div><div class="s">기획한 주제 ${all.reduce((a,x)=>a+x.c.topics.length,0)}개</div></div>
+  <div class="kpis two">
+    <div class="kpi accent"><div class="k">대본 완료</div><div class="v"><span data-count="${scripts}">${(scripts).toLocaleString()}</span><small>편</small></div><div class="s">기획한 주제 ${all.reduce((a,x)=>a+x.c.topics.length,0)}개</div></div>
     <div class="kpi"><div class="k">납품 완료</div><div class="v"><span data-count="${st[5]}">${(st[5]).toLocaleString()}</span><small>/ ${goal}편</small></div><div class="s">${goal?Math.round(st[5]/goal*100):0}% 달성</div></div>
   </div>
   ${homeStrip()}
@@ -2558,7 +2579,7 @@ function viewSettings(){
     </div>
     <div class="card"><div class="card-h"><div><div class="eyebrow">APP</div><h2 style="margin-top:4px">앱처럼 쓰기</h2></div></div>
       <div class="grid2">
-        <div class="howcard">${IC.home}<b>PC</b><p>바탕화면의 <b>'숏츠메이커' 아이콘</b>을 더블클릭하면 주소창 없이 앱 창으로 열려요.</p></div>
+        <div class="howcard">${IC.home}<b>PC</b><p>바탕화면의 <b>'쇼츠메이커' 아이콘</b>을 더블클릭하면 주소창 없이 앱 창으로 열려요.</p></div>
         <div class="howcard">${IC.phone}<b>휴대폰</b><p>호스팅 주소를 크롬(안드로이드)·사파리(아이폰)로 열고 <b>'홈 화면에 추가'</b>를 누르면 상단·하단 바 없이 앱처럼 열려요. 카카오톡 안 브라우저에서는 안 되니 '다른 브라우저로 열기'를 먼저 누르세요.</p></div>
       </div></div>
     <div class="card"><div class="card-h"><div><div class="eyebrow">DATA</div><h2 style="margin-top:4px">백업</h2></div></div>
@@ -2697,7 +2718,7 @@ document.addEventListener("click", async e => {
     case "useref": { const cc=C(); if(!cc){ toast("먼저 고객을 등록해 주세요."); S.view="clients"; break; } cc.refId=b.dataset.id; S.view="client"; cc.step=cc.topics.length?"script":"topics"; toast(`'${cc.info.name||"고객"}' 대본에 이 구조를 적용해요. 다른 고객은 왼쪽에서 고르세요.`); break; }
     case "delframe": { const f=draftFrames.splice(+b.dataset.i,1)[0]; if(f) URL.revokeObjectURL(f.url); break; }
     case "clearframes": draftFrames.forEach(f=>URL.revokeObjectURL(f.url)); draftFrames=[]; break;
-    case "backup": { const ok = await saveFile(`숏츠메이커_백업_${fmtDate(now()).replace(/\./g,"")}.json`, JSON.stringify(Object.assign({},S,{live:{}}),null,1)); return; }
+    case "backup": { const ok = await saveFile(`쇼츠메이커_백업_${fmtDate(now()).replace(/\./g,"")}.json`, JSON.stringify(Object.assign({},S,{live:{}}),null,1)); return; }
     case "restore": document.getElementById("restore-file").click(); return;
     case "restore-yes": if(pendingRestore){ S = fromSaved(pendingRestore); pendingRestore=null; S.view="home"; toast("백업을 불러왔어요."); } break;
     case "restore-no": pendingRestore=null; break;
@@ -2754,7 +2775,7 @@ document.addEventListener("change", e => {
   if(el.dataset.price!=null) render();
   else if(el.hasAttribute("data-sref")){ c.refId=el.value||null; save(); }
   else if(el.id==="ref-file"){ handleFiles(el.files); el.value=""; }
-  else if(el.id==="restore-file"){ const f=el.files[0]; el.value=""; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); if(!d||!Array.isArray(d.clients)) throw 0; pendingRestore=d; showRestore(d); }catch(_){ toast("숏츠메이커 백업 파일이 아니에요."); } }; r.readAsText(f); }
+  else if(el.id==="restore-file"){ const f=el.files[0]; el.value=""; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); if(!d||!Array.isArray(d.clients)) throw 0; pendingRestore=d; showRestore(d); }catch(_){ toast("쇼츠메이커 백업 파일이 아니에요."); } }; r.readAsText(f); }
 });
 document.addEventListener("focusout", e => {
   const el=e.target; if(!el.dataset || !el.dataset.edit) return;
