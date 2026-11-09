@@ -2813,7 +2813,47 @@ function showRestore(d){
 
 /* boot */
 document.body.insertAdjacentHTML("beforeend",'<input type="file" id="restore-file" accept="application/json,.json" hidden>');
-render();
+
+/* 수강생 전용 접근 코드: 코드를 바꾸려면 ACCESS에 새 해시를 넣는다 (node로 cyrb53(대문자·영숫자만) 계산) */
+const GATE_KEY = "shortsmaker.access";
+const ACCESS = ["2giwu8tdddh"];
+const cyrb53 = (str, seed=7) => { let h1=0xdeadbeef^seed, h2=0x41c6ce57^seed; for(let i=0,ch;i<str.length;i++){ ch=str.charCodeAt(i); h1=Math.imul(h1^ch,2654435761); h2=Math.imul(h2^ch,1597334677); } h1=Math.imul(h1^(h1>>>16),2246822507); h1^=Math.imul(h2^(h2>>>13),3266489909); h2=Math.imul(h2^(h2>>>16),2246822507); h2^=Math.imul(h1^(h1>>>13),3266489909); return (4294967296*(2097151&h2)+(h1>>>0)).toString(36); };
+function isUnlocked(){
+  if(inClaude) return true;
+  try{
+    if(localStorage.getItem(GATE_KEY)==="ok") return true;
+    // 이미 쓰고 있던 사용자(저장된 고객·키가 있음)는 그대로 통과
+    if(localStorage.getItem(KEY) || localStorage.getItem(KEYS_KEY) || localStorage.getItem("shortsmaker.v1")){ localStorage.setItem(GATE_KEY,"ok"); return true; }
+    return false;
+  }catch(e){ return true; }
+}
+function showGate(){
+  const g = document.createElement("div");
+  g.id = "gate";
+  g.setAttribute("style","position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px");
+  g.innerHTML = `<form class="card" id="gate-form" style="width:100%;max-width:420px;padding:28px">
+    <div class="eyebrow">SHORTS MAKER · 수강생 전용</div>
+    <h1 style="margin:6px 0 8px;font-size:26px">쇼츠메이커</h1>
+    <p class="muted" style="margin-bottom:18px">숏츠파파 유료 과정 수강생 전용 프로그램입니다. 단톡방 공지에 있는 수강생 코드를 입력해 주세요. 처음 한 번만 입력하면 됩니다.</p>
+    <label class="label" for="gate-code">수강생 코드</label>
+    <input id="gate-code" autocomplete="off" autocapitalize="characters" placeholder="예: ABCD-1234" style="box-sizing:border-box;width:100%;margin:6px 0 10px;padding:11px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--panel);font-size:16px;letter-spacing:.04em">
+    <div id="gate-err" class="err" style="display:none;margin-bottom:10px"><span>코드가 맞지 않아요. 대소문자·띄어쓰기는 상관없어요. 다시 확인해 주세요.</span></div>
+    <button class="btn" type="submit" style="box-sizing:border-box;display:flex;width:100%;margin:0;justify-content:center">시작하기</button>
+  </form>`;
+  document.body.appendChild(g);
+  const inp = document.getElementById("gate-code"); inp.focus();
+  document.getElementById("gate-form").addEventListener("submit", e => {
+    e.preventDefault();
+    const code = inp.value.toUpperCase().replace(/[^A-Z0-9]/g,"");
+    if(code && ACCESS.includes(cyrb53(code))){
+      try{ localStorage.setItem(GATE_KEY,"ok"); }catch(_){}
+      g.remove(); render();
+    } else {
+      document.getElementById("gate-err").style.display = "flex";
+    }
+  });
+}
+if(isUnlocked()) render(); else showGate();
 })();
 
 </script>
