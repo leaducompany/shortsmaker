@@ -1362,6 +1362,7 @@ const DEFAULT_STATE = () => ({
       process:"주제·대본 기획 → 고객이 폰으로 촬영 → 컷편집·자막·BGM → 검수 후 업로드",targets:["doctor","lawyer","cpa","tax"]},
   pricing:[{n:4,p:150},{n:8,p:250},{n:12,p:350}],
   profiles:{}, profTab:"soomgo",
+  soom:{req:"",msg:""}, soomLeads:[], soomSel:null,
   posts:[], postSel:null, viral:{platform:"threads",target:"doctor",ideas:[]}, weekly:"", leadsTab:"me",
   lib:{tab:"bench",cat:"all",fmt:"전체",sort:"views",src:"all"}, live:{}, liveCfg:{yt:true,ig:true,period:"month",kw:{}}, saved:[], libSel:null
 });
@@ -1507,7 +1508,9 @@ const MSGS = {
   viral:["타깃 전문직의 고민을 떠올리는 중","반응 좋은 유형을 고르는 중","이미 쓴 글과 겹치지 않게 거르는 중","첫 줄을 다듬는 중"],
   live:["유튜브 쇼츠를 검색하는 중","인스타 릴스를 모으는 중","조회수를 확인하는 중","조회수 순으로 정리하는 중","거의 다 됐어요 · 보통 20~40초"],
   post:["글의 각도를 잡는 중","첫 문장을 쓰는 중","본문을 쓰는 중"],
-  prof:["내 소개를 정리하는 중","플랫폼 형식에 맞추는 중","문장을 다듬는 중"]
+  prof:["내 소개를 정리하는 중","플랫폼 형식에 맞추는 중","문장을 다듬는 중"],
+  soom:["요청서를 읽는 중","나와 맞는 고객인지 따져 보는 중","견적 금액을 고르는 중","단계별 메시지를 쓰는 중","예상 질문 답변을 준비하는 중"],
+  soomr:["고객 메시지의 속뜻을 읽는 중","답장을 쓰는 중","다음 한 수를 정하는 중"]
 };
 function errCopy(e){
   const c = e && e.code;
@@ -1748,6 +1751,63 @@ ${JSON.stringify(prev)}`;
   return `${base}
 ${shape}
 JSON 객체만 답한다.`;
+}
+
+/* ----- 숨고 채팅 응대 ----- */
+const SOOM_SAMPLE = `[숨고 요청서] 숏폼 영상 제작
+고객: 김○○ 님 (서울 강남구)
+업종: 피부과 의원 (원장 1명, 개원 3년 차)
+영상 용도: 유튜브 쇼츠, 인스타그램 릴스
+원하는 편수: 한 달에 8편 정도
+촬영: 원장님이 직접 출연 가능, 촬영은 해 본 적 없음
+예산: 월 200~300만 원
+시작 희망: 12월 중
+요청사항: 블로그는 3년째 하고 있는데 숏폼은 처음이에요. 원장님 진료 시간이 빡빡해서 촬영에 시간을 많이 못 씁니다. 실제로 환자 문의가 늘었으면 좋겠어요.`;
+const SOOM_RULES = `숨고 채팅 응대 원칙
+- 숨고는 외부 연락처(전화번호·카톡 ID·이메일·외부 링크) 공유와 외부 결제 유도를 막는다. 메시지에 넣지 않고, 통화가 필요하면 '숨고 안심번호/숨고 채팅에서 통화 요청'으로 안내한다.
+- 조회수·매출·환자 수를 보장하지 않는다. "보장", "무조건", "100%"를 쓰지 않는다.
+- [나]에 없는 경력·사례·수치는 지어내지 않는다. 요청서에 없는 고객 정보도 지어내지 않는다.
+- 채팅은 짧게: 한 메시지 4~7줄, 첫 줄에 고객의 상황을 짚고, 마지막 줄은 답하기 쉬운 질문 하나로 끝낸다.
+- 존댓말, 과한 이모지·느낌표 금지, 고객 업종 호칭(원장님·변호사님·세무사님·대표님)을 쓴다.
+- 견적은 [나]의 가격표 안에서 고른다. 할인은 먼저 제안하지 않는다.`;
+function soomPlanPrompt(req){
+  return `너는 '전문직 숏폼 대행' 프리랜서([나])의 숨고 영업 담당이다. 숨고에 들어온 [요청서]를 읽고, 견적부터 계약까지의 채팅 응대 플랜을 만든다.
+${SOOM_RULES}
+업종 키는 다음 중 하나: ${ALLCATS.map(k=>`${k}(${CATS[k].label})`).join(", ")}. 전문직이 아니면 "".
+
+[나]
+${meBlock()}
+
+[요청서]
+${req}
+
+JSON 객체 하나만 답한다:
+{"lead":{"cat":"업종 키","title":"이 문의를 부를 이름 20자 (예: 강남 피부과 · 월 8편)","who":"요청자 한 줄 요약","need":"진짜 원하는 것 한 줄 (요청서 행간까지)","budget":"예산 (없으면 '미기재')","timing":"시작 시기 (없으면 '미기재')","fit":0~100 정수,"fitWhy":"맞는 고객인지 판단 근거 한 문장","missing":["채팅으로 꼭 확인할 것 3개"]},
+"quote":{"pkg":"추천 패키지 예: 월 8편","price":"금액 예: 250만 원","amount":"숨고 견적 금액 칸에 넣을 숫자만 (원 단위)","why":"이 패키지를 고른 이유 한 문장","note":"숨고 견적서 '견적 설명' 칸에 넣을 글 300자 안팎"},
+"messages":[{"step":"첫 메시지","when":"견적 보낼 때 바로","text":""},{"step":"상담 질문","when":"고객이 처음 답하면","text":""},{"step":"샘플·통화 제안","when":"관심을 보이면","text":""},{"step":"계약 안내","when":"진행하겠다고 하면","text":""},{"step":"무응답 1차","when":"견적 후 24시간 무응답","text":""},{"step":"무응답 2차","when":"3일 무응답","text":""}],
+"objections":[{"q":"이 고객이 할 법한 질문·거절","a":"답장"}] 정확히 4개 (가격, 효과, 촬영 부담, 그 밖의 걱정 1개),
+"cautions":["이 고객을 응대할 때 주의할 점 2~3개 (광고 규정 포함)"]}`;
+}
+function soomReplyPrompt(L, msg){
+  const p = L.plan||{}, ld = p.lead||{};
+  return `너는 '전문직 숏폼 대행' 프리랜서([나])의 숨고 영업 담당이다. 숨고 채팅에서 고객이 방금 보낸 [고객 메시지]에 보낼 답장을 쓴다.
+${SOOM_RULES}
+
+[나]
+${meBlock()}
+
+[요청서]
+${L.req}
+
+[지금까지 파악한 것] ${ld.who||""} / 원하는 것: ${ld.need||""} / 추천 견적: ${(p.quote||{}).pkg||""} ${(p.quote||{}).price||""}
+
+[지금까지 대화]
+${arr(L.thread).slice(-10).map(x=>`${x.from==="me"?"나":"고객"}: ${x.text}`).join("\n")||"(아직 없음)"}
+
+[고객 메시지]
+${msg}
+
+JSON 객체 하나만 답한다: {"intent":"고객이 이 말을 한 속뜻 한 줄","reply":"보낼 답장","alt":"조금 더 짧은 다른 버전","next":"답장 뒤 내가 할 다음 행동 한 줄"}`;
 }
 
 /* =========================================================
@@ -2341,9 +2401,10 @@ async function handleFiles(files){
 function viewLeads(){
   const tab = S.leadsTab==="cal"?"post":S.leadsTab;
   const head = `<div class="page-head"><div><div class="eyebrow">LEAD GENERATION</div><h1>내 고객 모으기</h1><p>내 소개를 한 번 적고, 플랫폼 프로필을 고정하고, 필요할 때마다 반응 좋은 글을 하나씩 씁니다.</p></div></div>
-    <nav class="seg" aria-label="내 고객 모으기">${[["me","내 소개"],["prof","플랫폼 프로필"],["post","홍보 글 쓰기"]].map(([k,l],i)=>`<button data-act="ltab" data-k="${k}" aria-current="${tab===k}"><i>0${i+1}</i>${l}</button>`).join("")}</nav>`;
+    <nav class="seg" aria-label="내 고객 모으기">${[["me","내 소개"],["prof","플랫폼 프로필"],["post","홍보 글 쓰기"],["soom","숨고 채팅 응대"]].map(([k,l],i)=>`<button data-act="ltab" data-k="${k}" aria-current="${tab===k}"><i>0${i+1}</i>${l}</button>`).join("")}</nav>`;
   if(tab==="me") return head+leadsMe();
   if(tab==="prof") return head+leadsProf();
+  if(tab==="soom") return head+leadsSoom();
   return head+leadsPost();
 }
 function leadsMe(){
@@ -2382,6 +2443,49 @@ function leadsProf(){
         <div class="stack">${profBlocks(k,p.data)}</div>
         <div class="row between" style="margin-top:16px"><span class="muted small">${p.tone?`마지막 다듬기: ${h(p.tone)}`:"처음 만든 글"} · ${fmtDate(p.at)}</span><button class="link" data-act="genprof">처음부터 다시 만들기</button></div></div>`
       :`<div class="empty">${STRIPES}<b>${PROFILES[k][0]}를 만들어 볼까요?</b><span>'내 소개'에 적은 정보로 작성합니다.</span><div style="margin-top:10px"><button class="btn" data-act="genprof" ${busy[key]?"disabled":""}>${IC.spark}만들기</button></div></div>`}`;
+}
+function soomLeadText(L){
+  const p=L.plan||{}, q=p.quote||{};
+  return `[견적] ${q.pkg||""} ${q.price||""}\n${q.note||""}\n\n${arr(p.messages).map(m=>`[${m.step} · ${m.when}]\n${m.text}`).join("\n\n")}\n\n[예상 질문 대응]\n${arr(p.objections).map(x=>`Q. ${x.q}\nA. ${x.a}`).join("\n\n")}`;
+}
+function leadsSoom(){
+  const L = S.soomLeads.find(x=>x.id===S.soomSel), key="soom:new";
+  const list = S.soomLeads.length ? `<div class="row" style="margin-bottom:16px;gap:8px"><span class="muted small">받은 문의</span>${S.soomLeads.slice().reverse().map(x=>`<button class="chip" data-act="soomsel" data-id="${x.id}" aria-pressed="${x.id===S.soomSel}">${h((x.plan&&x.plan.lead&&x.plan.lead.title)||"숨고 문의")}</button>`).join("")}<button class="chip" data-act="soomsel" data-id="" aria-pressed="${!L}">${IC.plus}새 문의</button></div>` : "";
+  const step = (n,t,body,done) => `<div class="pstep ${done?"done":""}"><div class="pn">${done?IC.check:n}</div><div class="pb"><h3>${t}</h3>${body}</div></div>`;
+  if(!L){
+    return `${list}<div class="note" style="margin-bottom:16px">${IC.info}<span>숨고에 들어온 요청서를 그대로 붙여 넣으면, 맞는 고객인지 판단하고 견적 금액·견적 설명·단계별 채팅 메시지·예상 질문 답변까지 한 번에 만듭니다. 외부 연락처는 넣지 않아요.</span></div>
+    <div class="pflow">${step(1,"숨고 요청서를 붙여 넣으세요",`<div class="field"><label class="label" for="soom-req">요청서 내용 <small>고객 답변 항목을 통째로 복사해도 됩니다</small></label><textarea id="soom-req" data-soom="req" style="min-height:200px" placeholder="예) 업종: 피부과 / 원하는 편수: 월 8편 / 예산: 월 200~300만 원 / 요청사항: ...">${h(S.soom.req)}</textarea></div>
+      ${statusHTML(key,"soom")}
+      <div class="row" style="margin-top:12px"><button class="btn cta" data-act="gensoom" ${busy[key]?"disabled":""}>${IC.bolt}응대 플랜 만들기</button><button class="btn ghost sm" data-act="soomsample">예시 요청서 넣기</button></div>`,false)}</div>`;
+  }
+  const p=L.plan||{}, ld=p.lead||{}, q=p.quote||{}, rk="soomr:"+L.id, fit=Math.max(0,Math.min(100,+ld.fit||0));
+  const fitLabel = fit>=70?"잡아야 할 고객":fit>=40?"조건 확인 후 진행":"무리하지 않기";
+  const blk = (t,sub,x,id) => `<div><div class="row between" style="margin-bottom:6px"><span class="label" style="margin:0">${h(t)}${sub?` <small>${h(sub)}</small>`:""}</span>${copyBtn(id,x,"복사","btn xs ghost")}</div><pre class="out" style="max-height:260px">${h(x)}</pre></div>`;
+  const analysis = `<div class="card flat" style="padding:16px"><div class="row between" style="align-items:flex-start;gap:12px"><div style="min-width:0"><div class="eyebrow">${h(catLabel(ld.cat)||"업종 미상")}</div><b style="font-family:var(--display);font-size:18px;display:block;margin-top:4px">${h(ld.title||"숨고 문의")}</b><p class="small" style="margin-top:6px">${h(ld.who)}</p></div>
+      <div style="text-align:right;min-width:120px"><div class="small muted">고객 적합도</div><div style="font-family:var(--display);font-weight:700;font-size:26px">${fit}<small class="muted" style="font-size:13px">/100</small></div><span class="pill">${fitLabel}</span></div></div>
+    <div style="margin:10px 0 12px;height:6px;border-radius:6px;background:var(--line);overflow:hidden"><div style="height:100%;width:${fit}%;background:var(--sky);border-radius:6px"></div></div>
+    <div class="grid2" style="gap:10px"><div><span class="label">진짜 원하는 것</span><p class="small">${h(ld.need)}</p></div><div><span class="label">예산 · 시작 시기</span><p class="small">${h(ld.budget)} · ${h(ld.timing)}</p></div></div>
+    <p class="small muted" style="margin-top:8px">${h(ld.fitWhy)}</p>
+    ${arr(ld.missing).length?`<div style="margin-top:10px"><span class="label">채팅으로 꼭 확인할 것</span><ul class="small" style="margin:4px 0 0 18px">${arr(ld.missing).map(x=>`<li>${h(x)}</li>`).join("")}</ul></div>`:""}
+    <div class="row" style="margin-top:12px"><button class="btn sm" data-act="soomclient" data-id="${L.id}">${IC.user}이 고객 등록하고 제안서 만들기</button><span class="sp"></span><button class="link" data-act="soomdel" data-id="${L.id}">이 문의 지우기</button></div></div>`;
+  const quote = `<div class="grid2" style="gap:12px;margin-bottom:12px"><div class="card flat" style="padding:14px"><div class="eyebrow">추천 견적</div><div style="font-family:var(--display);font-weight:700;font-size:20px;margin:4px 0">${h(q.pkg)} · ${h(q.price)}</div><p class="small muted">${h(q.why)}</p></div>
+      <div class="card flat" style="padding:14px"><div class="row between"><span class="eyebrow">숨고 견적 금액 칸</span>${copyBtn("sq-amt",str(q.amount),"복사","btn xs ghost")}</div><div style="font-family:var(--mono);font-size:20px;margin-top:6px">${h(str(q.amount).replace(/\B(?=(\d{3})+(?!\d))/g,","))}원</div><p class="small muted">VAT·월 단위 여부는 견적 설명에 적어 두세요.</p></div></div>
+    ${blk("견적 설명 칸","숨고 견적서에 그대로 붙여 넣기",str(q.note),"sq-note")}`;
+  const msgs = `<div class="stack">${arr(p.messages).map((m,i)=>blk(`${i+1}. ${m.step}`,m.when,str(m.text),"sm-"+i)).join("")}</div>`;
+  const obj = `<div class="stack">${arr(p.objections).map((x,i)=>blk("Q. "+x.q,"",str(x.a),"so-"+i)).join("")}</div>${arr(p.cautions).length?`<div class="note" style="margin-top:12px">${IC.alert}<span>${arr(p.cautions).map(h).join("<br>")}</span></div>`:""}`;
+  const last = L.last;
+  const chat = `${arr(L.thread).length?`<div class="stack" style="gap:6px;margin-bottom:12px">${arr(L.thread).slice(-8).map(x=>`<div class="small" style="padding:8px 12px;border-radius:12px;max-width:85%;white-space:pre-wrap;${x.from==="me"?"margin-left:auto;background:var(--navy);color:var(--navy-ink)":"background:var(--panel);border:1px solid var(--line)"}">${h(x.text)}</div>`).join("")}</div>`:""}
+    <div class="field"><label class="label" for="soom-msg">고객이 보낸 메시지 <small>숨고 채팅에서 복사해 붙여 넣기</small></label><textarea id="soom-msg" data-soom="msg" style="min-height:90px" placeholder="예) 원장님이 촬영을 정말 짧게만 할 수 있는데 괜찮을까요?">${h(S.soom.msg)}</textarea></div>
+    ${statusHTML(rk,"soomr")}
+    <div class="row" style="margin-top:10px"><button class="btn" data-act="soomreply" data-id="${L.id}" ${busy[rk]?"disabled":""}>${IC.msg}답장 만들기</button></div>
+    ${last?`<div class="card flat" style="padding:14px;margin-top:14px"><div class="small muted">속뜻 · ${h(last.intent)}</div><div class="stack" style="margin-top:10px">${blk("보낼 답장","",str(last.reply),"sr-1")}${last.alt?blk("짧은 버전","",str(last.alt),"sr-2"):""}</div><p class="small" style="margin-top:8px"><b>다음 할 일</b> ${h(last.next)}</p><div class="row end" style="margin-top:8px">${last.sent?`<span class="small muted">✓ 보낸 것으로 기록함</span>`:`<button class="btn ghost sm" data-act="soomsent" data-id="${L.id}">${IC.check}보낸 것으로 기록</button>`}</div></div>`:""}`;
+  return `${list}<div class="pflow">
+    ${step(1,"요청서 분석 · 잡을 고객인지 판단",analysis,true)}
+    ${step(2,"견적 보내기",quote,false)}
+    ${step(3,"단계별 채팅 메시지",msgs+`<div class="row end" style="margin-top:10px">${copyBtn("soom-all",soomLeadText(L),"플랜 전체 복사","btn sm")}</div>`,false)}
+    ${step(4,"예상 질문 · 거절 대응",obj,false)}
+    ${step(5,"고객이 답장하면 · 실시간 답장 만들기",chat,false)}
+  </div>`;
 }
 function postText(it){
   const p = it.post; if(!p) return "";
@@ -2767,6 +2871,38 @@ document.addEventListener("click", async e => {
       save(); render(); return;
     }
     case "genpost": { const it=S.posts.find(x=>x.id===b.dataset.id); if(it) await genPost(it); return; }
+    case "soomsample": S.soom.req=SOOM_SAMPLE; break;
+    case "soomsel": S.soomSel=b.dataset.id||null; break;
+    case "gensoom": {
+      const el=document.getElementById("soom-req"); if(el) S.soom.req=el.value;
+      const req=S.soom.req.trim(), key="soom:new";
+      if(req.length<20){ lastErr[key]="숨고 요청서 내용을 붙여 넣어 주세요. (업종, 편수, 예산, 요청사항 등)"; render(); return; }
+      const out=await askJSON(key,"soom",soomPlanPrompt(req));
+      if(out && typeof out==="object" && out.lead){ const L={id:uid(),at:now(),req,plan:out,thread:[],last:null}; S.soomLeads.push(L); S.soomSel=L.id; S.soom.req=""; toast("응대 플랜을 만들었어요."); }
+      else if(out) lastErr[key]="결과 형식이 달라 받지 못했어요. 다시 눌러 주세요.";
+      save(); render(); return;
+    }
+    case "soomreply": {
+      const L=S.soomLeads.find(x=>x.id===b.dataset.id); if(!L) return;
+      const el=document.getElementById("soom-msg"); if(el) S.soom.msg=el.value;
+      const msg=S.soom.msg.trim(), key="soomr:"+L.id;
+      if(!msg){ lastErr[key]="고객이 보낸 메시지를 붙여 넣어 주세요."; render(); return; }
+      const out=await askJSON(key,"soomr",soomReplyPrompt(L,msg));
+      if(out && out.reply){ L.thread.push({from:"client",text:msg,at:now()}); L.last=Object.assign({},out,{sent:false}); S.soom.msg=""; toast("답장을 만들었어요."); }
+      else if(out) lastErr[key]="결과 형식이 달라 받지 못했어요. 다시 눌러 주세요.";
+      save(); render(); return;
+    }
+    case "soomsent": { const L=S.soomLeads.find(x=>x.id===b.dataset.id); if(L&&L.last&&!L.last.sent){ L.thread.push({from:"me",text:plain(L.last.reply),at:now()}); L.last.sent=true; toast("대화 기록에 남겼어요. 다음 답장에 반영됩니다."); } break; }
+    case "soomdel": { const id=b.dataset.id; S.soomLeads=S.soomLeads.filter(x=>x.id!==id); S.soomSel=null; toast("문의를 지웠어요."); break; }
+    case "soomclient": {
+      const L=S.soomLeads.find(x=>x.id===b.dataset.id); if(!L) return;
+      const ld=(L.plan&&L.plan.lead)||{}, q=(L.plan&&L.plan.quote)||{}, n=blankClient();
+      if(CATS[ld.cat]) n.info.cat=ld.cat;
+      const pm=parseInt(str(q.pkg).replace(/[^0-9]/g,""),10); if([4,8,12].includes(pm)) n.info.perMonth=pm;
+      n.info.strength=str(ld.need);
+      S.clients.push(n); S.clientId=n.id; S.view="client"; n.step="info";
+      toast("고객을 등록했어요. 상호명만 채우면 주제·제안서·견적서를 만들 수 있어요."); break;
+    }
     default: return;
   }
   save(); render();
@@ -2775,6 +2911,7 @@ document.addEventListener("input", e => {
   const el=e.target, c=C();
   if(el.dataset.f && c){ c.info[el.dataset.f]=el.value; updateQ(c); if(el.dataset.f==="name") renderRail(); save(); }
   else if(el.dataset.me){ S.me[el.dataset.me]=el.value; save(); }
+  else if(el.dataset.soom){ S.soom[el.dataset.soom]=el.value; save(); }
   else if(el.dataset.price!=null){ const v=parseInt(el.value.replace(/[^0-9]/g,""),10); if(!isNaN(v)){ S.pricing[+el.dataset.price].p=v; save(); } }
   else if(el.dataset.rd){ S.refDraft[el.dataset.rd]=el.value; save(); }
   else if(el.hasAttribute("data-tq")){ c.q=el.value; const pos=el.selectionStart; render(); const n=document.getElementById("t-q"); if(n){ n.focus(); n.setSelectionRange(pos,pos); } }
