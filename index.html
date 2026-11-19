@@ -2695,9 +2695,11 @@ function viewSettings(){
     </div>
     <div class="card"><div class="card-h"><div><div class="eyebrow">APP</div><h2 style="margin-top:4px">앱처럼 쓰기</h2></div></div>
       <div class="grid2">
-        <div class="howcard">${IC.home}<b>PC</b><p>바탕화면의 <b>'쇼츠메이커' 아이콘</b>을 더블클릭하면 주소창 없이 앱 창으로 열려요.</p></div>
-        <div class="howcard">${IC.phone}<b>휴대폰</b><p>호스팅 주소를 크롬(안드로이드)·사파리(아이폰)로 열고 <b>'홈 화면에 추가'</b>를 누르면 상단·하단 바 없이 앱처럼 열려요. 카카오톡 안 브라우저에서는 안 되니 '다른 브라우저로 열기'를 먼저 누르세요.</p></div>
-      </div></div>
+        <div class="howcard">${IC.home}<b>PC</b><p>${isAppMode()?`<b>지금 앱 창으로 쓰고 있어요.</b> 바탕화면·작업 표시줄의 '쇼츠메이커' 아이콘으로 바로 열 수 있어요.`:`크롬이나 엣지에서 이 주소를 연 채로 <b>주소창 오른쪽 끝의 설치 아이콘(모니터 모양)</b>을 누르고 [설치]. 바탕화면에 '쇼츠메이커' 아이콘이 생기고, 주소창 없이 앱 창으로 열려요.`}</p>
+          ${!isAppMode() && installEvt ? `<button class="btn" data-act="installapp" style="margin-top:10px">이 PC에 앱으로 설치</button>` : ""}</div>
+        <div class="howcard">${IC.phone}<b>휴대폰</b><p>쇼츠메이커 주소를 <b>크롬(안드로이드)</b>·<b>사파리(아이폰)</b>로 열고 메뉴에서 <b>'홈 화면에 추가'</b>를 누르면 앱처럼 열려요. 카카오톡에서 링크를 열었다면 오른쪽 위 메뉴의 <b>'다른 브라우저로 열기'</b>를 먼저 누르세요.</p></div>
+      </div>
+      <p class="hint" style="margin-top:10px">앱으로 설치해도 저장 공간은 같은 브라우저라 고객·대본·API 키가 그대로 이어져요. 다른 브라우저나 기기로 옮길 때만 아래 '백업'을 쓰세요.</p></div>
     <div class="card"><div class="card-h"><div><div class="eyebrow">DATA</div><h2 style="margin-top:4px">백업</h2></div></div>
       <p class="muted small">고객·대본·레퍼런스는 이 브라우저에만 저장돼요. PC와 휴대폰은 저장 공간이 따로라서, 옮길 때는 백업 파일을 저장해 불러오세요.</p>
       <div class="row" style="margin-top:12px"><button class="btn ghost" data-act="backup">${IC.file}백업 파일 저장</button><button class="btn ghost" data-act="restore">${IC.up}백업 불러오기</button></div></div>
@@ -2713,8 +2715,14 @@ async function genPost(it){
   if(out && typeof out==="object"){ it.post=out; if(!it.status) it.status=1; toast("글을 썼어요. 복사해서 올리면 끝!"); }
   save(); render();
 }
+/* 앱 설치(PWA): 크롬·엣지가 설치 가능하다고 알려 주면 설정 화면에 [이 PC에 앱으로 설치] 버튼을 보여 준다 */
+var installEvt = null;
+function isAppMode(){ try{ return matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; }catch(e){ return false; } }
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; if(S.view==="settings") render(); });
+window.addEventListener("appinstalled", () => { installEvt = null; toast("앱으로 설치했어요. 바탕화면의 '쇼츠메이커' 아이콘으로 열 수 있어요."); if(S.view==="settings") render(); });
 document.addEventListener("click", async e => {
   const b = e.target.closest("[data-act]"); if(!b || b.disabled) return;
+  if(b.dataset.act === "installapp"){ if(installEvt){ installEvt.prompt(); try{ await installEvt.userChoice; }catch(_){} installEvt = null; render(); } return; }
   const a = b.dataset.act, c = C();
   if(a!=="play" && a!=="selrow") stopPlay();
   switch(a){
