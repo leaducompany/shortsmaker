@@ -1007,6 +1007,41 @@ body{background:var(--bg)}
 h1,h2,h3,h4,p,b,small,.qa b,.vbody b,.idea .it,.note span{word-break:keep-all;overflow-wrap:anywhere}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 
+/* 전문직 찾기 */
+.pf-form h2{font-size:22px}
+.pf-safe{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--green)}
+.pf-safe svg{width:14px;height:14px}
+.pf-inputs{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(0,1.6fr) minmax(0,.7fr) minmax(0,1.1fr);gap:12px;align-items:end;margin-top:14px}
+.pf-inputs .field{margin:0}
+.pf-inputs select,.pf-inputs input{width:100%;height:48px;font-size:16px;font-weight:600}
+.pf-go{height:48px;font-size:17px;justify-content:center;width:100%;min-width:0;box-sizing:border-box;padding:0 16px!important;border-radius:10px!important}
+@media (max-width:860px){.pf-inputs{grid-template-columns:1fr 1fr}.pf-inputs .field:nth-child(3){grid-column:1/-1}.pf-go{grid-column:1/-1}}
+.pf-steps{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.pf-steps span{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:var(--muted)}
+.pf-steps span+span::before{content:"→";margin-right:4px;color:var(--line)}
+.pf-steps i{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--sunk);font-style:normal;font-size:11px;font-weight:700}
+.pf-steps span.on{color:var(--ink);font-weight:600}.pf-steps span.on i{background:var(--sky);color:#fff;animation:pfp 1.2s ease-in-out infinite}
+.pf-steps span.done{color:var(--green)}.pf-steps span.done i{background:var(--green);color:#fff}
+.pf-steps b{margin-left:auto}
+@keyframes pfp{50%{opacity:.45}}
+.pf-count{font-size:14px;color:var(--sky);margin-left:6px}
+.pf-tbl td{vertical-align:middle}
+.pf-tbl td:first-child,.pf-tbl th:first-child{padding-left:18px}
+.pf-score{display:flex;align-items:center;gap:8px}
+.pf-score i{flex:1;height:9px;border-radius:9px;background:var(--sunk);overflow:hidden;display:block}
+.pf-score u{display:block;height:100%;border-radius:9px}
+.pf-score b{font-family:var(--display);font-size:18px;min-width:24px;text-align:right}
+.pf-sf{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--sunk);color:var(--muted)}
+.sf-none,.sf-stop{background:var(--green-soft);color:var(--green)}
+.sf-some{background:var(--sky-soft);color:var(--sky-ink)}
+.sf-active{background:var(--sunk);color:var(--muted)}
+.sf-wait{background:var(--amber-soft);color:var(--amber)}
+.dotpulse{width:7px;height:7px;border-radius:50%;background:currentColor;animation:pfp 1s infinite}
+.pf-tbl tr.pf-detail td{background:var(--sky-soft);cursor:default;padding:0 18px 18px}
+.pf-tbl tr.pf-detail:hover td{background:var(--sky-soft)}
+.pf-dbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+@media (max-width:640px){.pf-tbl th:nth-child(4),.pf-tbl tr[data-act] td:nth-child(4){display:none}.pf-tbl tr[data-act] td:nth-child(2){min-width:0!important}.pf-tbl tr[data-act] td:nth-child(3){width:92px!important}.pf-tbl td,.pf-tbl th{padding-left:10px;padding-right:10px}.pf-tbl tr.pf-detail td{padding:0 8px 12px}}
+
 </style>
 <header class="mhead" id="mhead"></header>
 <div class="app">
@@ -1373,7 +1408,7 @@ function fromSaved(v2){
       if(!s.clients.length && (s.view==="client")) s.view = "home";
       if(v2.cal && Array.isArray(v2.cal.items)){ s.posts = v2.cal.items.filter(x=>x.post).map(x=>({id:x.id,at:now(),platform:x.platform,target:x.target,type:x.angle||"",title:x.title,post:x.post,status:x.status===2?2:1})).concat(s.posts||[]); delete s.cal; delete s.calSel; }
       if(s.leadsTab==="cal") s.leadsTab="post";
-      s.pf = Object.assign(DEFAULT_STATE().pf, s.pf||{}); if(!Array.isArray(s.prospects)) s.prospects = [];
+      s.pf = Object.assign(DEFAULT_STATE().pf, s.pf||{}); if(!Array.isArray(s.prospects)) s.prospects = []; s.prospects.forEach(p=>{ if(p.stage!=="done"){ p.stage="done"; if(!p.sf) p.sf={"운영 중":"active","가끔":"some","멈춤":"stop","없음":"none"}[p.shortform]||"unk"; } });
       s.lib = Object.assign(DEFAULT_STATE().lib, s.lib||{}); s.liveCfg = Object.assign(DEFAULT_STATE().liveCfg, s.liveCfg||{});
       s.v = 3; return s;
 }
@@ -2498,49 +2533,30 @@ function postText(it){
   return `${p.title}\n\n${p.body}\n\n${arr(p.tags).map(x=>"#"+str(x).replace(/^#/,"")).join(" ")}`;
 }
 /* ----- 전문직 찾기 (업종·지역 → 숏폼이 필요한 곳 골라내기) ----- */
-const PF_SHORT = {"운영 중":"숏폼 꾸준히 올림","가끔":"숏폼 가끔 올림","멈춤":"숏폼 멈춤","없음":"숏폼 없음","확인 안 됨":"확인 안 됨"};
-const PF_ANGLES = [
-  "지역+업종 기본 키워드로 검색해 대표적인 곳부터 찾는다.",
-  "지역 안의 다른 동·역 이름(예: 지역의 주요 역세권)과 업종을 묶어 검색해, 앞 그룹과 겹치지 않는 곳을 찾는다.",
-  "지역+세부 분야·대표 진료/업무 키워드로 검색해, 규모가 작거나 개업한 지 얼마 안 된 곳을 찾는다.",
-  "지역+업종+'블로그'·'후기' 키워드로 검색해, 블로그는 하는데 영상은 약한 곳을 찾는다."];
-function findPrompt(cat, sub, region, n, exclude, part){
+/* ---------- 전문직 찾기 ----------
+   1) 업체 목록(웹 검색 · 약 10초) → 2) 업체별 공식 SNS(동시 · 약 5초) → 3) Apify로 최근 릴스·쇼츠 날짜(약 15~20초)
+   점수는 AI가 아니라 실제 최근 게시일로 계산한다. 이메일·개인 연락처는 모으지 않는다. */
+const PF_SF = {none:"숏폼 없음", stop:"숏폼 멈춤", some:"가끔 올림", active:"꾸준히 올림", acct:"계정만 확인", wait:"확인 중", unk:"확인 안 됨"};
+function pfListPrompt(cat, sub, region, n, exclude){
   const c = CATS[cat] || {label:"전문직"};
-  return `너는 '전문직 숏폼 대행' 프리랜서의 시장 조사 담당이다. web_search 도구로 [조건]에 맞는 실제 업체를 빠르게 찾아 정리한다.
-
-[조건]
-업종: ${c.label}${sub?` / ${sub}`:""}
-지역: ${region}
-목표 개수: ${n}곳
-
-[조사 방법 · 빠르게]
-- 검색은 3번 안에 끝낸다. 업체 하나하나를 따로 검색하지 않는다.
-- 이번 검색 방향: ${PF_ANGLES[part||0]}
-- 검색 1~2번으로 업체 목록과 공식 정보를 모으고, 남은 1번은 "${region} ${sub||c.label} 유튜브 쇼츠" 또는 "인스타그램"처럼 여러 업체의 숏폼 운영 여부를 한꺼번에 확인하는 데 쓴다.
-- 공식 홈페이지, 지도·업종 디렉터리, 업체 공식 유튜브·인스타그램·블로그를 근거로 쓴다. 검색 결과로 숏폼 현황을 확인 못 한 곳은 "확인 안 됨"으로 둔다.
-
-[수집 범위 · 반드시 지킬 것]
-- 업체의 공식·공개 정보만 적는다: 상호, 주소(구·동까지), 업체 대표 전화, 공식 홈페이지 주소, 업체 공식 계정 주소.
-- 이메일 주소, 개인 휴대전화, 대표자 개인 계정 같은 개인 연락처는 수집하지 않는다. 결과에 이메일을 넣지 않는다.
-- 검색 결과에서 실제로 확인한 것만 쓰고 지어내지 않는다. 확인 못 한 칸은 ""로 둔다. 확인 못 한 숏폼 현황은 "확인 안 됨".
-- 같은 업체를 두 번 넣지 않는다.${exclude.length?`\n- 아래 업체는 이미 찾았으니 빼고 새로운 곳을 찾는다: ${exclude.slice(-60).join(", ")}`:""}
-
-[숏폼 기회 점수 0~100 · 숏폼 대행이 필요하고 맡길 가능성이 높을수록 높게]
-- 블로그·홈페이지·광고는 활발한데 숏폼이 없거나 3개월 넘게 멈춘 곳: 높게(70~95)
-- 숏폼을 가끔 올리지만 꾸준하지 않은 곳: 중간(50~70)
-- 이미 주 1편 이상 꾸준히 숏폼을 올리는 곳(대행사가 있을 가능성): 낮게(10~40)
-- 온라인 활동 흔적이 거의 없는 곳: 중간 이하(30~55, 마케팅 예산이 없을 수 있음)
-- 개원·개업 1~3년 차, 경쟁이 많은 지역이면 가점
-
-[출력] 다른 말 없이 JSON 객체 하나만(코드펜스 금지):
-{"items":[{"name":"상호","addr":"주소(구·동)","phone":"업체 대표 전화 또는 \\"\\"","web":"공식 홈페이지 주소 또는 \\"\\"","youtube":"공식 유튜브 주소 또는 \\"\\"","instagram":"공식 인스타 주소 또는 \\"\\"","blog":"공식 블로그 주소 또는 \\"\\"","shortform":"운영 중|가끔|멈춤|없음|확인 안 됨","score":0,"why":"점수 이유 한 문장(확인한 사실 위주)","angle":"이 곳에 맞는 숏폼 첫 주제 아이디어 한 줄","contact":"공식 문의 경로(예: 홈페이지 상담 게시판, 카카오톡 채널, 대표 전화)","source":"근거로 확인한 주소 하나"}]}`;
+  return `web_search로 "${region} ${sub||c.label}" 실제 업체 ${n}곳을 찾아라. 검색은 ${n>10?3:2}번까지만.
+- 업종: ${c.label}${sub?` / ${sub}`:""}. 지역 ${region} 안의 업체만. 프랜차이즈 지점은 그 지점 이름으로.
+- 업체가 공개한 정보만: 상호, 도로명 주소, 대표 전화, 공식 홈페이지. 이메일·개인 휴대전화는 절대 넣지 않는다.
+- 검색 결과에서 확인한 것만 쓰고 지어내지 않는다. 모르면 "".${exclude.length?`\n- 이미 찾은 곳은 빼고 새로운 곳만: ${exclude.slice(-60).join(", ")}`:""}
+- angle: 그 업체의 대표 진료·업무를 살린 숏폼 첫 주제 한 줄(15~25자, 결과 보장·과장 금지).
+다른 말 없이 JSON만: {"items":[{"name":"상호","addr":"주소(구·동)","phone":"대표 전화","web":"공식 홈페이지","angle":"첫 주제 아이디어"}]}`;
+}
+function pfSnsPrompt(p){
+  return `web_search로 "${p.name}"(${p.addr||p.region})의 공식 SNS를 확인해라. 검색은 1번만: "${p.name} 인스타그램 유튜브".
+- 그 업체 공식 계정만. 다른 지점·다른 병원·리뷰/광고 계정은 제외. 확실하지 않으면 "".
+다른 말 없이 JSON만: {"instagram":"https://www.instagram.com/아이디/","youtube":"https://www.youtube.com/@채널 또는 /channel/ID","blog":"공식 블로그 주소"}`;
 }
 function pfMsgPrompt(p){
   const c = CATS[p.cat] || {label:"전문직", who:"대표님"};
   return `너는 '전문직 숏폼 대행' 프리랜서([나])다. 아래 [업체]에 처음 연락할 때 쓸 문구를 만든다.
 
 [원칙]
-- 처음 보는 사이다. 짧고 정중하게, 이 업체를 실제로 살펴봤다는 것이 드러나게 [업체]의 숏폼 현황·주제 아이디어를 한 가지만 짚는다.
+- 처음 보는 사이다. 짧고 정중하게, 이 업체를 실제로 살펴봤다는 것이 드러나게 [업체]의 숏폼 현황을 한 가지만 짚는다.
 - 광고성 연락이므로 정보통신망법을 지킨다: 메시지 첫머리에 "(광고)"를 붙이고, 보내는 사람(활동명)을 밝히고, 마지막 줄에 수신 거부 방법을 적는다("원하지 않으시면 '수신거부'라고 답장 주세요. 다시 연락드리지 않겠습니다.").
 - 바로 계약을 권하지 않는다. "숏폼 주제 3개를 정리해 드려도 될까요?"처럼 상대가 받아도 될지 먼저 묻는 한 가지 제안으로 끝낸다.
 - 조회수·매출·환자 수를 보장하지 않는다. [나]에 없는 경력·사례·수치는 지어내지 않는다. 업종 광고 규정을 지킨다: ${c.rules||"결과 보장·비교·비방 금지"}
@@ -2553,93 +2569,175 @@ ${meBlock()}
 상호: ${p.name}
 업종: ${c.label}${p.sub?` / ${p.sub}`:""}
 지역: ${p.addr||p.region}
-숏폼 현황: ${p.shortform||"확인 안 됨"} — ${p.why||""}
+숏폼 현황: ${PF_SF[p.sf]||"확인 안 됨"} — ${p.why||""}
 주제 아이디어: ${p.angle||""}
-공식 문의 경로: ${p.contact||"확인 안 됨"}
 
 [출력] 다른 말 없이 JSON 객체 하나만:
-{"dm":"공식 문의 채널(카카오톡 채널·인스타 DM·홈페이지 상담 게시판)에 남길 메시지, 5~8줄","call":"대표 전화로 걸었을 때 첫 30초 말할 내용. 첫 문장에서 광고 목적의 연락임을 밝히고, 원하지 않으면 바로 끝낸다","topics":["이 업체에 맞는 숏폼 주제 3개"],"check":["연락 전에 확인할 것 1~2개"]}`;
+{"dm":"카카오톡 채널·인스타 DM·홈페이지 상담 게시판에 남길 메시지, 5~7줄","call":"대표 전화로 걸었을 때 첫 30초 말할 내용. 첫 문장에서 광고 목적의 연락임을 밝히고, 원하지 않으면 바로 끝낸다","topics":["이 업체에 맞는 숏폼 주제 3개"]}`;
 }
-// 전문직 찾기: 속도를 위해 항상 Sonnet 5.5 · effort low · 검색 3회 이내로, 5곳씩 나눠 동시에 찾는다.
-async function webOnce(key, prompt, signal){
-  const base = {model:"claude-sonnet-5-5", max_tokens:8000, output_config:{effort:"low"}};
-  const tools = [{type:"web_search_20260209", name:"web_search", max_uses:3, user_location:{type:"approximate", country:"KR", timezone:"Asia/Seoul"}}];
-  const post = async body => {
-    const headers = {"content-type":"application/json","x-api-key":K.anthropic.trim(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"};
-    try{ return await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers,body:JSON.stringify(body),signal}); }
+// 검색 도구는 빠른 기본형(web_search_20250305) · Sonnet 5.5 · effort low
+async function pfAsk(prompt, uses, maxTok, signal){
+  const body = {model:"claude-sonnet-5-5", max_tokens:maxTok, output_config:{effort:"low"}, messages:[{role:"user", content:prompt}]};
+  if(uses) body.tools = [{type:"web_search_20250305", name:"web_search", max_uses:uses, user_location:{type:"approximate", country:"KR", timezone:"Asia/Seoul"}}];
+  const headers = {"content-type":"application/json","x-api-key":K.anthropic.trim(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"};
+  for(let attempt=0; attempt<3; attempt++){
+    let res;
+    try{ res = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers,body:JSON.stringify(body),signal}); }
     catch(e){ if(e && e.name==="AbortError") throw {code:"cancelled"}; throw {code:"network"}; }
-  };
-  let messages = [{role:"user", content:prompt}], text = "";
-  for(let turn=0; turn<3; turn++){
-    const res = await post(Object.assign({}, base, {messages, tools}));
+    if((res.status===429||res.status===529||res.status>=500) && attempt<2){ await new Promise(r=>setTimeout(r,1500*(attempt+1))); continue; }
     if(!res.ok){ let j=null; try{ j=await res.json(); }catch(_){} throw apiErr(res.status, j); }
     const j = await res.json();
     if(j.stop_reason==="refusal") throw {code:"refused"};
-    const content = arr(j.content);
-    text = content.filter(b=>b.type==="text").map(b=>b.text).join("");
-    if(busy[key]){ busy[key].chars += text.length; paintMeta(key); }
-    if(j.stop_reason!=="pause_turn") break;
-    messages = messages.concat([{role:"assistant", content}]);
+    const text = arr(j.content).filter(b=>b.type==="text").map(b=>b.text).join("");
+    const v = looseJSON(text); if(v===undefined) throw {code:"invalid_json"};
+    return v;
   }
-  const v = looseJSON(text); if(v===undefined) throw {code:"invalid_json"};
-  return v;
 }
-async function askWebJSON(key, group, prompts, onPart){
-  if(busy[key]) return null;
-  if(inClaude){ lastErr[key] = "전문직 찾기는 인터넷 검색이 필요해서, 바탕화면·휴대폰 앱(내 Claude API 키)에서만 쓸 수 있어요."; render(); return null; }
-  if(!K.anthropic.trim()){ lastErr[key] = errCopy({code:"no_sample"}); S.aiModal = true; render(); return null; }
-  const ctl = startBusy(key, group); render();
+async function pool(list, limit, fn){ let i=0; await Promise.all(Array.from({length:Math.min(limit,list.length)},async()=>{ while(i<list.length){ const x=list[i++]; await fn(x); } })); }
+const igUser = u => { const m = str(u).match(/instagram\.com\/([A-Za-z0-9._]+)/); return m && !/^(p|reel|reels|explore|stories)$/i.test(m[1]) ? m[1].toLowerCase() : ""; };
+const ytUrl = u => /youtube\.com\/(@[^/?#\s]+|channel\/[\w-]+|c\/[^/?#\s]+|user\/[^/?#\s]+)/.test(str(u)) ? str(u).match(/^https?:\/\/[^?#\s]+/)[0].replace(/\/(shorts|videos|featured|about)\/?$/,"").replace(/\/$/,"") : "";
+const daysAgo = d => d ? Math.max(0, Math.round((now()-new Date(d).getTime())/864e5)) : null;
+function pfScore(p){
+  const igC = p.instagram && p.checked && p.igOk!==false, ytC = p.youtube && p.checked && p.ytOk!==false;
+  const ig = igC && p.igLast ? daysAgo(p.igLast) : null, yt = ytC && p.ytLast ? daysAgo(p.ytLast) : null;
+  const ago = d => d===0 ? "오늘" : d<45 ? d+"일 전" : d<365 ? Math.round(d/30)+"개월 전" : Math.floor(d/365)+"년 이상 전";
+  const bits = [];
+  if(p.instagram) bits.push(ig!=null?`인스타 마지막 영상 ${ago(ig)}`:igC?"인스타 계정 있음 · 최근 영상 없음":"인스타 계정 있음 · 최근 영상 확인 못 함");
+  if(p.youtube) bits.push(yt!=null?`유튜브 마지막 영상 ${ago(yt)}`:ytC?"유튜브 채널 있음 · 최근 영상 없음":"유튜브 채널 있음 · 최근 영상 확인 못 함");
+  if(p.blog) bits.push("블로그 운영");
+  const has = !!(p.instagram || p.youtube), anyC = igC || ytC;
+  const last = [ig,yt].filter(x=>x!=null).sort((a,b)=>a-b)[0];
+  let sf, sc;
+  if(!has){ sf="none"; sc=86; bits.unshift("공식 인스타·유튜브를 찾지 못함"); }
+  else if(!anyC){ sf="acct"; sc=55; }
+  else if(last==null || last>180){ sf="stop"; sc=92; }
+  else if(last>60){ sf="stop"; sc=82; }
+  else if(last>21 || (p.recent30||0)<2){ sf="some"; sc=64; }
+  else { sf="active"; sc=24; }
+  if(p.web && sf!=="active") sc+=3;
+  if(p.blog && sf!=="active") sc+=3;
+  p.sf = sf; p.score = Math.min(99, sc); p.why = bits.join(" · ");
+}
+async function pfApify(actor, input, signal, sec){
+  const t = new AbortController(), stop = () => t.abort(); signal.addEventListener("abort", stop);
+  const timer = setTimeout(()=>t.abort(), sec*1000);
+  try{ return await apifyRun(actor, input, t.signal); }
+  catch(e){ if(signal.aborted) throw {code:"cancelled"}; if(e && e.code==="cancelled") throw {code:"apify_error", message:"시간 초과"}; throw e; }
+  finally{ clearTimeout(timer); signal.removeEventListener("abort", stop); }
+}
+// 인스타·유튜브를 따로 돌려, 먼저 끝난 쪽부터 표에 반영한다.
+async function pfCheckActivity(items, signal){
+  items.forEach(p=>{ p.wIg=!!igUser(p.instagram); p.wYt=!!ytUrl(p.youtube); p.igOk=true; p.ytOk=true; });
+  const finish = () => { items.forEach(p=>{ if(p.stage==="act" && !p.wIg && !p.wYt){ p.stage="done"; p.checked=true; pfScore(p); } }); render(); };
+  const igs = [...new Set(items.map(p=>igUser(p.instagram)).filter(Boolean))];
+  const yts = [...new Set(items.map(p=>ytUrl(p.youtube)).filter(Boolean))];
+  const jobs = [];
+  if(igs.length) jobs.push(pfApify("apify~instagram-reel-scraper",{username:igs,resultsLimit:2},signal,40).then(r=>{
+    items.forEach(p=>{ const u=igUser(p.instagram); if(!u) return; const mine=r.filter(x=>str(x.ownerUsername).toLowerCase()===u||str(x.inputUrl).toLowerCase().includes(u)).map(x=>x.timestamp).filter(Boolean).sort().reverse();
+      if(mine.length){ p.igLast=mine[0]; p.recent30=(p.recent30||0)+mine.filter(t=>daysAgo(t)<=30).length; } });
+  }).catch(e=>{ items.forEach(p=>{ if(p.wIg) p.igOk=false; }); throw e; }).finally(()=>{ items.forEach(p=>p.wIg=false); finish(); }));
+  if(yts.length) jobs.push(pfApify("streamers~youtube-scraper",{startUrls:yts.map(url=>({url})),maxResults:1,maxResultsShorts:2,maxResultStreams:0},signal,35).then(r=>{
+    items.forEach(p=>{ const u=ytUrl(p.youtube).toLowerCase(); if(!u) return; const mine=r.filter(x=>x.date && [x.inputChannelUrl,x.channelUrl].some(c=>str(c).toLowerCase().replace(/\/$/,"")===u)).map(x=>x.date).sort().reverse();
+      if(mine.length){ p.ytLast=mine[0]; p.recent30=(p.recent30||0)+mine.filter(t=>daysAgo(t)<=30).length; } });
+  }).catch(e=>{ items.forEach(p=>{ if(p.wYt) p.ytOk=false; }); throw e; }).finally(()=>{ items.forEach(p=>p.wYt=false); finish(); }));
+  const res = await Promise.allSettled(jobs);
+  const bad = res.find(x=>x.status==="rejected"); if(bad && bad.reason && bad.reason.code==="cancelled") throw bad.reason;
+  return bad ? bad.reason : null;
+}
+let pfRun = null; // {stage, t0, total}
+async function pfFind(more){
+  const f=S.pf, region=str(f.region).trim(), key="find";
+  if(busy[key]) return;
+  if(!region){ toast("지역을 먼저 적어 주세요. 예) 서울 강남구"); const el=document.getElementById("pf-region"); if(el) el.focus(); return; }
+  if(inClaude){ lastErr[key]="전문직 찾기는 인터넷 검색이 필요해서, 바탕화면·휴대폰 앱(내 Claude API 키)에서만 쓸 수 있어요."; render(); return; }
+  if(!K.anthropic.trim()){ lastErr[key]=errCopy({code:"no_sample"}); S.aiModal=true; render(); return; }
+  const ctl=startBusy(key,"find"); pfRun={stage:1,t0:now()}; S.pfSel=null; render();
+  const n=+f.n||10, ex=more?S.prospects.map(x=>x.name):[];
+  const seen=new Set(S.prospects.map(x=>(x.name+"|"+x.addr).replace(/\s/g,""))), fresh=[];
   try{
-    let ok = 0, firstErr = null;
-    await Promise.all(prompts.map(p => webOnce(key, p, ctl.signal)
-      .then(v => { ok++; onPart(v); save(); render(); })
-      .catch(e => { if(!firstErr) firstErr = e; })));
-    if(!ok) throw firstErr || {code:"invalid_json"};
-    return ok;
-  }catch(e){ if(!e || e.code!=="cancelled"){ lastErr[key] = errCopy(e); aiFail(e); } return null; }
-  finally{ delete busy[key]; render(); }
+    const half=n>10?[Math.ceil(n/2),Math.floor(n/2)]:[n];
+    await Promise.all(half.map((m,i)=>pfAsk(pfListPrompt(f.cat,f.sub,region,m,i?ex.concat(["(앞 그룹과 다른 동·역 위주로)"]):ex),m>10?3:2,3500,ctl.signal).then(out=>{
+      arr(out&&out.items).forEach(x=>{ if(!x||!str(x.name).trim()) return; const k=(str(x.name)+"|"+str(x.addr)).replace(/\s/g,""); if(seen.has(k)) return; seen.add(k);
+        const p={id:uid(),at:now(),cat:f.cat,sub:f.sub,region,name:str(x.name),addr:str(x.addr),phone:str(x.phone),web:/^https?:/.test(str(x.web))?str(x.web):"",angle:str(x.angle),instagram:"",youtube:"",blog:"",sf:"wait",score:0,why:"",stage:"sns",msg:null};
+        S.prospects.push(p); fresh.push(p); });
+      render();
+    })));
+    if(!fresh.length){ lastErr[key]="새로 찾은 곳이 없어요. 지역을 조금 넓히거나 세부 분야를 바꿔 보세요."; return; }
+    pfRun.stage=2; render();
+    await pool(fresh, 6, async p=>{
+      try{ const s=await pfAsk(pfSnsPrompt(p),1,600,ctl.signal); p.instagram=igUser(s.instagram)?`https://www.instagram.com/${igUser(s.instagram)}/`:""; p.youtube=ytUrl(s.youtube); p.blog=/^https?:/.test(str(s.blog))?str(s.blog):""; }
+      catch(e){ if(e&&e.code==="cancelled") throw e; }
+      p.stage = K.apify.trim() && (p.instagram||p.youtube) ? "act" : "done"; if(p.stage==="done"){ p.checked=!!K.apify.trim(); pfScore(p); } render();
+    });
+    if(K.apify.trim()){
+      pfRun.stage=3; render();
+      const err=await pfCheckActivity(fresh.filter(p=>p.stage==="act"), ctl.signal);
+      if(err) toast("일부 채널은 최근 영상 날짜를 가져오지 못했어요: "+liveErr(err));
+    } else fresh.forEach(p=>{ p.stage="done"; pfScore(p); });
+    toast(`${fresh.length}곳을 찾았어요. 점수가 높은 곳부터 눌러 보세요.`);
+  }catch(e){
+    fresh.forEach(p=>{ if(p.stage!=="done"){ p.stage="done"; pfScore(p); } });
+    if(!e || e.code!=="cancelled"){ lastErr[key]=errCopy(e); aiFail(e); }
+  }finally{ delete busy[key]; pfRun=null; save(); render(); }
+}
+async function genPfMsg(p){
+  const k="pfmsg:"+p.id; if(busy[k]) return; delete lastErr[k];
+  if(inClaude){ const out=await askJSON(k,"pfmsg",pfMsgPrompt(p)); if(out&&out.dm){ p.msg=out; save(); } render(); return; }
+  if(!K.anthropic.trim()){ lastErr[k]=errCopy({code:"no_sample"}); S.aiModal=true; render(); return; }
+  const ctl=startBusy(k,"pfmsg"); render();
+  try{ const out=await pfAsk(pfMsgPrompt(p),0,1500,ctl.signal); if(out && out.dm){ p.msg=out; save(); } else lastErr[k]="결과 형식이 달라 받지 못했어요. 다시 눌러 주세요."; }
+  catch(e){ if(!e || e.code!=="cancelled") lastErr[k]=errCopy(e); }
+  finally{ delete busy[k]; render(); }
 }
 const pfLink = (u,l) => /^https?:\/\//.test(str(u)) ? `<a class="link" href="${h(u)}" target="_blank" rel="noopener">${l}</a>` : "";
 function prospectsCSV(){
   const q = v => `"${str(v).replace(/"/g,'""')}"`;
-  const head = ["점수","상호","업종","세부","지역","주소","대표 전화","홈페이지","유튜브","인스타그램","블로그","숏폼 현황","이유","첫 주제 아이디어","공식 문의 경로","출처","찾은 날"];
-  const rows = S.prospects.slice().sort((a,b)=>(+b.score||0)-(+a.score||0)).map(p=>[p.score,p.name,catLabel(p.cat),p.sub,p.region,p.addr,p.phone,p.web,p.youtube,p.instagram,p.blog,p.shortform,p.why,p.angle,p.contact,p.source,fmtDate(p.at)].map(q).join(","));
+  const head = ["점수","상호","업종","세부","지역","주소","대표 전화","홈페이지","유튜브","인스타그램","블로그","숏폼 현황","근거","첫 주제 아이디어","찾은 날"];
+  const rows = S.prospects.slice().sort((a,b)=>(+b.score||0)-(+a.score||0)).map(p=>[p.score,p.name,catLabel(p.cat),p.sub,p.region,p.addr,p.phone,p.web,p.youtube,p.instagram,p.blog,PF_SF[p.sf]||"",p.why,p.angle,fmtDate(p.at)].map(q).join(","));
   return [head.map(q).join(",")].concat(rows).join("\r\n");
 }
 function leadsFind(){
-  const f = S.pf, key = "find", cat = CATS[f.cat] || CATS.doctor;
-  const list = S.prospects.slice().sort((a,b)=>(+b.score||0)-(+a.score||0));
-  const sel = S.prospects.find(x=>x.id===S.pfSel);
-  const form = `<div class="card fields"><div><div class="eyebrow">FIND PROFESSIONALS</div><h3 style="margin-top:4px">어느 지역의 어떤 전문직을 찾을까요?</h3><p class="hint">AI가 인터넷 검색으로 실제 업체를 찾아, <b>숏폼이 필요해 보이는 곳부터</b> 점수를 매겨 정리합니다.</p></div>
-      <div><span class="label">업종</span><div class="row">${ALLCATS.map(k=>`<button class="chip" data-act="pfcat" data-k="${k}" aria-pressed="${f.cat===k}">${CATS[k].label}</button>`).join("")}</div></div>
-      <div class="grid2" style="gap:12px"><div class="field"><label class="label" for="pf-sub">세부 분야 <small>선택</small></label><select id="pf-sub" data-pf="sub"><option value="">전체</option>${arr(cat.subs).map(s=>`<option ${f.sub===s?"selected":""}>${h(s)}</option>`).join("")}</select></div>
-        <div class="field"><label class="label" for="pf-region">지역 <small>구·동·역 이름까지 쓰면 정확해요</small></label><input type="text" id="pf-region" data-pf="region" value="${h(f.region)}" placeholder="예) 서울 강남구 / 부산 해운대 / 분당 정자역"></div></div>
-      <div class="row between"><div class="row"><span class="muted small">한 번에</span>${[10,20].map(n=>`<button class="chip" data-act="pfn" data-k="${n}" aria-pressed="${+f.n===n}">${n}곳</button>`).join("")}</div>
-        <div class="row"><button class="btn cta" data-act="genfind" ${busy[key]?"disabled":""}>${IC.scan}찾기</button>${list.length?`<button class="btn ghost sm" data-act="genfind" data-more="1" ${busy[key]?"disabled":""}>겹치지 않게 더 찾기</button>`:""}</div></div>
-      <p class="hint">한 번 찾을 때 검색 몇 번과 AI 사용료로 10곳 기준 보통 <b>200~500원</b>이 듭니다(내 API 키에서 차감, 20곳은 약 2배). 5곳씩 나눠 동시에 찾아서 <b>보통 30초~1분</b>이면 되고, 찾는 대로 아래 표에 채워져요.</p></div>`;
-  const rule = `<div class="note" style="margin-bottom:16px">${IC.info}<span><b>이메일·개인 연락처는 모으지 않습니다.</b> 업체가 공개한 대표 정보와 공식 채널만 정리해요. 홈페이지에서 이메일을 자동으로 모으는 것, 동의 없이 광고 메시지를 보내는 것은 정보통신망법(제50조·제50조의2) 위반입니다. 연락은 한 곳씩 직접, 광고임을 밝히고, 거부하면 다시 하지 않는 방식으로 하세요.</span></div>`;
-  const row = p => { const sc=Math.max(0,Math.min(100,+p.score||0));
-    return `<tr class="${p.id===S.pfSel?"sel":""}"><td style="text-align:center"><b style="font-family:var(--display);font-size:18px">${sc}</b></td>
-      <td><b>${h(p.name)}</b><div class="small muted">${h(catLabel(p.cat))}${p.sub?` · ${h(p.sub)}`:""} · ${h(p.addr||p.region)}</div>${p.phone?`<div class="small">${h(p.phone)}</div>`:""}</td>
-      <td class="small">${[pfLink(p.web,"홈페이지"),pfLink(p.youtube,"유튜브"),pfLink(p.instagram,"인스타"),pfLink(p.blog,"블로그")].filter(Boolean).join(" · ")||'<span class="muted">확인 안 됨</span>'}<div style="margin-top:4px"><span class="pill">${h(PF_SHORT[p.shortform]||p.shortform||"확인 안 됨")}</span></div></td>
-      <td class="small">${h(p.why)}${p.angle?`<div class="muted" style="margin-top:4px">첫 주제 · ${h(p.angle)}</div>`:""}</td>
-      <td><div class="stack" style="gap:6px"><button class="btn xs" data-act="pfsel" data-id="${p.id}">${IC.msg}첫 연락 문구</button><button class="btn xs ghost" data-act="pfclient" data-id="${p.id}">${IC.user}고객 등록</button><button class="link small" data-act="pfdel" data-id="${p.id}">지우기</button></div></td></tr>`; };
-  const table = list.length ? `<div class="card" style="margin-top:16px"><div class="card-h"><div><div class="eyebrow">RESULTS · ${list.length}곳</div><h2 style="margin-top:4px">숏폼 기회 점수 순</h2><p class="hint">점수가 높을수록 숏폼이 비어 있거나 멈춘 곳입니다. 공식 채널을 직접 열어 한 번 더 확인하세요.</p></div>
-      <div class="row"><button class="btn sm ghost" data-act="pfcsv">${IC.file}엑셀용 CSV 저장</button><button class="link" data-act="pfclear">목록 비우기</button></div></div>
-      <div style="overflow-x:auto"><table class="tbl"><thead><tr><th style="width:56px">점수</th><th>업체</th><th style="width:170px">채널 · 숏폼</th><th>이유 · 첫 주제</th><th style="width:118px"></th></tr></thead><tbody>${list.map(row).join("")}</tbody></table></div></div>`
-    : (busy[key]?"":`<div class="empty" style="margin-top:16px">${STRIPES}<b>아직 찾은 곳이 없어요</b><span>업종과 지역을 고르고 '찾기'를 눌러 보세요.</span></div>`);
-  let detail = "";
-  if(sel){
-    const mk = "pfmsg:"+sel.id, m = sel.msg;
-    const blk = (t,x,id) => `<div><div class="row between" style="margin-bottom:6px"><span class="label" style="margin:0">${h(t)}</span>${copyBtn(id,x,"복사","btn xs ghost")}</div><pre class="out" style="max-height:260px">${h(x)}</pre></div>`;
-    detail = `<div class="card" style="margin-top:16px"><div class="card-h"><div><div class="eyebrow">FIRST CONTACT</div><h2 style="margin-top:4px">${h(sel.name)} · 첫 연락 문구</h2><p class="hint">공식 문의 경로: ${h(sel.contact||"확인 안 됨")}</p></div><button class="link" data-act="pfsel" data-id="">닫기</button></div>
-      ${statusHTML(mk,"pfmsg")}
-      ${m?`<div class="stack">${blk("공식 채널 메시지 (카카오 채널·DM·상담 게시판)",str(m.dm),"pf-dm")}${blk("대표 전화 첫 30초",str(m.call),"pf-call")}${arr(m.topics).length?blk("이 업체 맞춤 숏폼 주제 3개",arr(m.topics).map((x,i)=>`${i+1}. ${x}`).join("\n"),"pf-tp"):""}
-        ${arr(m.check).length?`<div class="note">${IC.alert}<span>${arr(m.check).map(h).join("<br>")}</span></div>`:""}</div>
-        <div class="row" style="margin-top:12px"><button class="link" data-act="pfmsg" data-id="${sel.id}">다시 만들기</button></div>`
-      :`<div class="row"><button class="btn" data-act="pfmsg" data-id="${sel.id}" ${busy[mk]?"disabled":""}>${IC.spark}문구 만들기</button><span class="muted small">'내 소개'에 적은 정보로 씁니다. 광고 표기와 수신 거부 문구가 자동으로 들어갑니다.</span></div>`}</div>`;
-  }
-  return rule + form + `<div style="margin-top:16px">${statusHTML(key,"find")}</div>` + detail + table;
+  const f = S.pf, key = "find", cat = CATS[f.cat] || CATS.doctor, run = busy[key] && pfRun;
+  const list = S.prospects.slice().sort((a,b)=>(b.stage==="done")-(a.stage==="done") || (+b.score||0)-(+a.score||0));
+  const form = `<div class="card pf-form"><div class="row between" style="align-items:baseline;flex-wrap:wrap;gap:6px"><h2 style="margin:0">전문직 찾기</h2><span class="pf-safe">${IC.check}공개된 업체 정보만 정리 · 이메일 수집 없음</span></div>
+      <div class="pf-inputs">
+        <div class="field"><label class="label" for="pf-cat">업종</label><select id="pf-cat" data-pf="cat">${ALLCATS.map(k=>`<option value="${k}" ${f.cat===k?"selected":""}>${h(CATS[k].label)}</option>`).join("")}</select></div>
+        <div class="field"><label class="label" for="pf-sub">세부 분야</label><select id="pf-sub" data-pf="sub"><option value="">전체</option>${arr(cat.subs).map(s=>`<option ${f.sub===s?"selected":""}>${h(s)}</option>`).join("")}</select></div>
+        <div class="field"><label class="label" for="pf-region">지역</label><input type="text" id="pf-region" data-pf="region" value="${h(f.region)}" placeholder="예) 서울 강남구"></div>
+        <div class="field"><label class="label" for="pf-n">개수</label><select id="pf-n" data-pf="n">${[10,20].map(n=>`<option value="${n}" ${+f.n===n?"selected":""}>${n}곳</option>`).join("")}</select></div>
+        <button class="btn cta pf-go" data-act="genfind" ${busy[key]?"disabled":""}>${IC.scan}${busy[key]?"찾는 중":"찾기"}</button>
+      </div>
+      <p class="hint" style="margin:10px 0 0">10곳 기준 약 30~40초, 비용은 보통 400~700원(내 Claude 키) + Apify 약 50원입니다. ${K.apify.trim()?"":"<b>Apify를 연결하면 최근 릴스·쇼츠 날짜까지 확인해 점수가 정확해져요.</b>"}</p></div>`;
+  const steps = run ? `<div class="pf-steps">${[["1","업체 찾기"],["2","공식 SNS 확인"],["3","최근 숏폼 날짜 확인"]].map(([n,t])=>`<span class="${run.stage>+n?"done":run.stage===+n?"on":""}"><i>${run.stage>+n?"✓":n}</i>${t}</span>`).join("")}<b class="muted small" data-meta="${key}">0초</b><button class="link small" data-act="stop" data-key="${key}">멈추기</button></div>` : "";
+  const err = !busy[key] && lastErr[key] ? `<div class="err big" style="margin-top:12px">${IC.alert}<span>${h(lastErr[key])}</span></div>` : "";
+  const bar = p => { const sc=Math.max(0,Math.min(100,+p.score||0)), col=sc>=80?"var(--green)":sc>=50?"var(--sky)":"var(--muted)";
+    return `<div class="pf-score"><i><u style="width:${sc}%;background:${col}"></u></i><b style="color:${col}">${sc}</b></div>`; };
+  const sfCell = p => p.stage==="done" ? `<span class="pf-sf sf-${p.sf}">${h(PF_SF[p.sf]||"")}</span><div class="small muted" style="margin-top:4px">${h(p.why)}</div>`
+    : `<span class="pf-sf sf-wait"><span class="dotpulse"></span>${p.stage==="sns"?"SNS 찾는 중":"최근 영상 확인 중"}</span>`;
+  const detail = p => {
+    const mk="pfmsg:"+p.id, m=p.msg;
+    const blk=(t,x,id)=>`<div><div class="row between" style="margin-bottom:6px"><span class="label" style="margin:0">${h(t)}</span>${copyBtn(id,x,"문구 복사","btn xs")}</div><pre class="out" style="max-height:240px;margin:0">${h(x)}</pre></div>`;
+    const links=[pfLink(p.web,"홈페이지"),pfLink(p.instagram,"인스타그램"),pfLink(p.youtube,"유튜브"),pfLink(p.blog,"블로그")].filter(Boolean).join(" · ");
+    return `<tr class="pf-detail"><td colspan="4"><div class="pf-dbox">
+      <div class="row between" style="flex-wrap:wrap;gap:8px"><div class="small">${links||'<span class="muted">공식 채널 확인 안 됨</span>'}${p.phone?` · 대표 전화 ${h(p.phone)}`:""}</div>
+        <div class="row" style="gap:6px"><button class="btn sm" data-act="pfclient" data-id="${p.id}">${IC.user}고객으로 등록</button><button class="link small" data-act="pfdel" data-id="${p.id}">지우기</button></div></div>
+      <div class="label" style="margin:14px 0 8px">맞춤 첫 연락 문구 <small>보내기 전 직접 확인 · 자동 발송 없음</small></div>
+      ${busy[mk]?statusHTML(mk,"pfmsg"):lastErr[mk]?`<div class="err">${IC.alert}<span>${h(lastErr[mk])}</span><button class="btn xs" data-act="pfmsg" data-id="${p.id}">다시 시도</button></div>`
+        :m?`<div class="stack" style="gap:12px">${blk("카카오 채널 · DM · 상담 게시판",str(m.dm),"pf-dm")}${blk("대표 전화 첫 30초",str(m.call),"pf-call")}${arr(m.topics).length?blk("이 업체 맞춤 숏폼 주제 3개",arr(m.topics).map((x,i)=>`${i+1}. ${x}`).join("\n"),"pf-tp"):""}<div><button class="link small" data-act="pfmsg" data-id="${p.id}">문구 다시 만들기</button></div></div>`
+        :`<button class="btn" data-act="pfmsg" data-id="${p.id}">${IC.spark}첫 연락 문구 만들기</button>`}
+    </div></td></tr>`; };
+  const row = p => `<tr class="${p.id===S.pfSel?"sel":""}" data-act="pfsel" data-id="${p.id}">
+      <td><b>${h(p.name)}</b><div class="small muted">${h(p.addr||p.region)}</div></td>
+      <td style="min-width:170px">${sfCell(p)}</td>
+      <td style="width:150px">${p.stage==="done"?bar(p):'<div class="pf-score"><i></i><b class="muted">·</b></div>'}</td>
+      <td class="small">${h(p.angle)}</td></tr>${p.id===S.pfSel?detail(p):""}`;
+  const table = list.length ? `<div class="card" style="margin-top:16px;padding:0;overflow:hidden">
+      <div class="row between" style="padding:16px 18px 10px;flex-wrap:wrap;gap:8px"><div><h3 style="margin:0">숏폼 기회 점수순 <span class="pf-count">${list.length}곳</span></h3><p class="hint" style="margin:4px 0 0">업체를 누르면 바로 아래에 첫 연락 문구가 만들어져요. 점수가 높을수록 숏폼이 비어 있거나 멈춘 곳입니다.</p></div>
+        <div class="row" style="gap:6px"><button class="btn sm ghost" data-act="genfind" data-more="1" ${busy[key]?"disabled":""}>겹치지 않게 더 찾기</button><button class="btn sm ghost" data-act="pfcsv">${IC.file}CSV 저장</button><button class="link small" data-act="pfclear">비우기</button></div></div>
+      <div style="overflow-x:auto"><table class="tbl pf-tbl"><thead><tr><th>업체명</th><th>숏폼 현황</th><th>기회 점수</th><th>첫 주제 아이디어</th></tr></thead><tbody>${list.map(row).join("")}</tbody></table></div></div>`
+    : (busy[key]?`<div class="card" style="margin-top:16px"><div class="skel" style="min-height:160px"></div></div>`:`<div class="empty" style="margin-top:16px">${STRIPES}<b>찾기를 누르면 숏폼이 필요한 곳부터 보여 줍니다</b><span>업종과 지역을 고르고 '찾기'를 눌러 보세요.</span></div>`);
+  const rule = `<p class="hint" style="margin-top:14px">${IC.info} 홈페이지에서 이메일을 자동으로 모으거나 동의 없이 광고를 보내는 것은 정보통신망법(제50조·제50조의2) 위반입니다. 연락은 한 곳씩 직접, 광고임을 밝히고, 거부하면 다시 하지 않는 방식으로 하세요.</p>`;
+  return form + steps + err + table + rule;
 }
 
 function leadsPost(){
@@ -3028,31 +3126,9 @@ document.addEventListener("click", async e => {
       save(); render(); return;
     }
     case "genpost": { const it=S.posts.find(x=>x.id===b.dataset.id); if(it) await genPost(it); return; }
-    case "pfcat": S.pf.cat=b.dataset.k; S.pf.sub=""; break;
-    case "pfn": S.pf.n=+b.dataset.k; break;
-    case "genfind": {
-      const f=S.pf, region=str(f.region).trim();
-      if(!region){ toast("지역을 먼저 적어 주세요. 예) 서울 강남구"); const el=document.getElementById("pf-region"); if(el) el.focus(); return; }
-      const more=!!b.dataset.more, ex=more?S.prospects.map(x=>x.name):[];
-      const parts=Math.max(1,Math.ceil((+f.n||10)/5));
-      const prompts=Array.from({length:parts},(_,i)=>findPrompt(f.cat,f.sub,region,5,ex,i%PF_ANGLES.length));
-      let added=0; const seen=new Set(S.prospects.map(x=>(x.name+"|"+x.addr).replace(/\s/g,"")));
-      const ok=await askWebJSON("find","find",prompts,out=>{
-        arr(out&&out.items).forEach(x=>{ if(!x||!str(x.name).trim()) return; const k=(str(x.name)+"|"+str(x.addr)).replace(/\s/g,""); if(seen.has(k)) return; seen.add(k);
-          S.prospects.push({id:uid(),at:now(),cat:f.cat,sub:f.sub,region,name:str(x.name),addr:str(x.addr),phone:str(x.phone),web:str(x.web),youtube:str(x.youtube),instagram:str(x.instagram),blog:str(x.blog),shortform:str(x.shortform)||"확인 안 됨",score:Math.max(0,Math.min(100,parseInt(x.score,10)||0)),why:str(x.why),angle:str(x.angle),contact:str(x.contact),source:str(x.source),msg:null}); added++; });
-      });
-      if(ok){
-        toast(added?`${added}곳을 찾았어요. 점수가 높은 곳부터 확인해 보세요.`:"새로 찾은 곳이 없어요. 지역을 조금 넓혀 보세요.");
-      }
-      break;
-    }
-    case "pfsel": S.pfSel=b.dataset.id||null; break;
-    case "pfmsg": {
-      const p=S.prospects.find(x=>x.id===b.dataset.id); if(!p) return;
-      const out=await askJSON("pfmsg:"+p.id,"pfmsg",pfMsgPrompt(p));
-      if(out && typeof out==="object" && out.dm){ p.msg=out; toast("첫 연락 문구를 만들었어요."); }
-      break;
-    }
+    case "genfind": pfFind(!!b.dataset.more); return;
+    case "pfsel": { const id=b.dataset.id||null; if(e.target.closest("a,button,.pf-detail")&&e.target.closest("[data-act]")!==b) return; S.pfSel = S.pfSel===id?null:id; const p=S.prospects.find(x=>x.id===S.pfSel); render(); if(p && !p.msg && !busy["pfmsg:"+p.id] && p.stage==="done") genPfMsg(p); return; }
+    case "pfmsg": { const p=S.prospects.find(x=>x.id===b.dataset.id); if(p) genPfMsg(p); return; }
     case "pfclient": {
       const p=S.prospects.find(x=>x.id===b.dataset.id); if(!p) return;
       const n=blankClient(); n.info.cat=p.cat; n.info.sub=p.sub; n.info.name=p.name; n.info.addr=p.addr||p.region;
@@ -3104,7 +3180,7 @@ document.addEventListener("input", e => {
   if(el.dataset.f && c){ c.info[el.dataset.f]=el.value; updateQ(c); if(el.dataset.f==="name") renderRail(); save(); }
   else if(el.dataset.me){ S.me[el.dataset.me]=el.value; save(); }
   else if(el.dataset.soom){ S.soom[el.dataset.soom]=el.value; save(); }
-  else if(el.dataset.pf){ S.pf[el.dataset.pf]=el.value; save(); }
+  else if(el.dataset.pf){ S.pf[el.dataset.pf]=el.dataset.pf==="n"?+el.value:el.value; if(el.dataset.pf==="cat"){ S.pf.sub=""; render(); } save(); }
   else if(el.dataset.price!=null){ const v=parseInt(el.value.replace(/[^0-9]/g,""),10); if(!isNaN(v)){ S.pricing[+el.dataset.price].p=v; save(); } }
   else if(el.dataset.rd){ S.refDraft[el.dataset.rd]=el.value; save(); }
   else if(el.hasAttribute("data-tq")){ c.q=el.value; const pos=el.selectionStart; render(); const n=document.getElementById("t-q"); if(n){ n.focus(); n.setSelectionRange(pos,pos); } }
