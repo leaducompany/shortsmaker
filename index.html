@@ -1362,7 +1362,7 @@ const DEFAULT_STATE = () => ({
       process:"주제·대본 기획 → 고객이 폰으로 촬영 → 컷편집·자막·BGM → 검수 후 업로드",targets:["doctor","lawyer","cpa","tax"]},
   pricing:[{n:4,p:150},{n:8,p:250},{n:12,p:350}],
   profiles:{}, profTab:"soomgo",
-  soom:{req:"",msg:""}, soomLeads:[], soomSel:null,
+  soom:{req:"",msg:""}, soomLeads:[], soomSel:null, pf:{cat:"doctor",sub:"",region:"",n:10}, prospects:[], pfSel:null,
   posts:[], postSel:null, viral:{platform:"threads",target:"doctor",ideas:[]}, weekly:"", leadsTab:"me",
   lib:{tab:"bench",cat:"all",fmt:"전체",sort:"views",src:"all"}, live:{}, liveCfg:{yt:true,ig:true,period:"month",kw:{}}, saved:[], libSel:null
 });
@@ -1373,6 +1373,7 @@ function fromSaved(v2){
       if(!s.clients.length && (s.view==="client")) s.view = "home";
       if(v2.cal && Array.isArray(v2.cal.items)){ s.posts = v2.cal.items.filter(x=>x.post).map(x=>({id:x.id,at:now(),platform:x.platform,target:x.target,type:x.angle||"",title:x.title,post:x.post,status:x.status===2?2:1})).concat(s.posts||[]); delete s.cal; delete s.calSel; }
       if(s.leadsTab==="cal") s.leadsTab="post";
+      s.pf = Object.assign(DEFAULT_STATE().pf, s.pf||{}); if(!Array.isArray(s.prospects)) s.prospects = [];
       s.lib = Object.assign(DEFAULT_STATE().lib, s.lib||{}); s.liveCfg = Object.assign(DEFAULT_STATE().liveCfg, s.liveCfg||{});
       s.v = 3; return s;
 }
@@ -1510,7 +1511,9 @@ const MSGS = {
   post:["글의 각도를 잡는 중","첫 문장을 쓰는 중","본문을 쓰는 중"],
   prof:["내 소개를 정리하는 중","플랫폼 형식에 맞추는 중","문장을 다듬는 중"],
   soom:["요청서를 읽는 중","나와 맞는 고객인지 따져 보는 중","견적 금액을 고르는 중","단계별 메시지를 쓰는 중","예상 질문 답변을 준비하는 중"],
-  soomr:["고객 메시지의 속뜻을 읽는 중","답장을 쓰는 중","다음 한 수를 정하는 중"]
+  soomr:["고객 메시지의 속뜻을 읽는 중","답장을 쓰는 중","다음 한 수를 정하는 중"],
+  find:["업종·지역으로 검색하는 중","업체 공식 정보를 확인하는 중","유튜브·인스타 숏폼 현황을 살피는 중","숏폼 기회 점수를 매기는 중","거의 다 됐어요 · 보통 1~3분"],
+  pfmsg:["업체 현황을 다시 읽는 중","첫 문장을 고르는 중","광고 표기와 수신 거부 문구를 넣는 중"]
 };
 function errCopy(e){
   const c = e && e.code;
@@ -2401,10 +2404,11 @@ async function handleFiles(files){
 function viewLeads(){
   const tab = S.leadsTab==="cal"?"post":S.leadsTab;
   const head = `<div class="page-head"><div><div class="eyebrow">LEAD GENERATION</div><h1>내 고객 모으기</h1><p>내 소개를 한 번 적고, 플랫폼 프로필을 고정하고, 필요할 때마다 반응 좋은 글을 하나씩 씁니다.</p></div></div>
-    <nav class="seg" aria-label="내 고객 모으기">${[["me","내 소개"],["prof","플랫폼 프로필"],["post","홍보 글 쓰기"],["soom","숨고 채팅 응대"]].map(([k,l],i)=>`<button data-act="ltab" data-k="${k}" aria-current="${tab===k}"><i>0${i+1}</i>${l}</button>`).join("")}</nav>`;
+    <nav class="seg" aria-label="내 고객 모으기">${[["me","내 소개"],["prof","플랫폼 프로필"],["post","홍보 글 쓰기"],["soom","숨고 채팅 응대"],["find","전문직 찾기"]].map(([k,l],i)=>`<button data-act="ltab" data-k="${k}" aria-current="${tab===k}"><i>0${i+1}</i>${l}</button>`).join("")}</nav>`;
   if(tab==="me") return head+leadsMe();
   if(tab==="prof") return head+leadsProf();
   if(tab==="soom") return head+leadsSoom();
+  if(tab==="find") return head+leadsFind();
   return head+leadsPost();
 }
 function leadsMe(){
@@ -2493,6 +2497,141 @@ function postText(it){
   if(it.platform==="insta") return `${arr(p.cards).map((x,i)=>`[${i+1}장] ${x.title}\n${x.body}`).join("\n\n")}\n\n[캡션]\n${p.caption}\n\n${arr(p.hashtags).join(" ")}`;
   return `${p.title}\n\n${p.body}\n\n${arr(p.tags).map(x=>"#"+str(x).replace(/^#/,"")).join(" ")}`;
 }
+/* ----- 전문직 찾기 (업종·지역 → 숏폼이 필요한 곳 골라내기) ----- */
+const PF_SHORT = {"운영 중":"숏폼 꾸준히 올림","가끔":"숏폼 가끔 올림","멈춤":"숏폼 멈춤","없음":"숏폼 없음","확인 안 됨":"확인 안 됨"};
+function findPrompt(cat, sub, region, n, exclude){
+  const c = CATS[cat] || {label:"전문직"};
+  return `너는 '전문직 숏폼 대행' 프리랜서의 시장 조사 담당이다. web_search 도구로 [조건]에 맞는 실제 업체를 찾아 정리한다.
+
+[조건]
+업종: ${c.label}${sub?` / ${sub}`:""}
+지역: ${region}
+목표 개수: ${n}곳
+
+[조사 방법]
+- "${region} ${sub||c.label}" 같은 지역+업종 키워드로 검색하고, 지역 안의 동·역 이름으로 한 번 더 검색해 폭을 넓힌다.
+- 공식 홈페이지, 지도·업종 디렉터리(예: 병원 찾기·변호사 찾기·세무사 찾기 사이트), 업체 공식 유튜브·인스타그램·블로그를 근거로 쓴다.
+- 업체마다 공식 유튜브(쇼츠)·인스타그램(릴스) 운영 여부와 최근 숏폼 업로드가 있는지 확인한다.
+
+[수집 범위 · 반드시 지킬 것]
+- 업체의 공식·공개 정보만 적는다: 상호, 주소(구·동까지), 업체 대표 전화, 공식 홈페이지 주소, 업체 공식 계정 주소.
+- 이메일 주소, 개인 휴대전화, 대표자 개인 계정 같은 개인 연락처는 수집하지 않는다. 결과에 이메일을 넣지 않는다.
+- 검색 결과에서 실제로 확인한 것만 쓰고 지어내지 않는다. 확인 못 한 칸은 ""로 둔다. 확인 못 한 숏폼 현황은 "확인 안 됨".
+- 같은 업체를 두 번 넣지 않는다.${exclude.length?`\n- 아래 업체는 이미 찾았으니 빼고 새로운 곳을 찾는다: ${exclude.slice(-60).join(", ")}`:""}
+
+[숏폼 기회 점수 0~100 · 숏폼 대행이 필요하고 맡길 가능성이 높을수록 높게]
+- 블로그·홈페이지·광고는 활발한데 숏폼이 없거나 3개월 넘게 멈춘 곳: 높게(70~95)
+- 숏폼을 가끔 올리지만 꾸준하지 않은 곳: 중간(50~70)
+- 이미 주 1편 이상 꾸준히 숏폼을 올리는 곳(대행사가 있을 가능성): 낮게(10~40)
+- 온라인 활동 흔적이 거의 없는 곳: 중간 이하(30~55, 마케팅 예산이 없을 수 있음)
+- 개원·개업 1~3년 차, 경쟁이 많은 지역이면 가점
+
+[출력] 다른 말 없이 JSON 객체 하나만(코드펜스 금지):
+{"items":[{"name":"상호","addr":"주소(구·동)","phone":"업체 대표 전화 또는 \\"\\"","web":"공식 홈페이지 주소 또는 \\"\\"","youtube":"공식 유튜브 주소 또는 \\"\\"","instagram":"공식 인스타 주소 또는 \\"\\"","blog":"공식 블로그 주소 또는 \\"\\"","shortform":"운영 중|가끔|멈춤|없음|확인 안 됨","score":0,"why":"점수 이유 한 문장(확인한 사실 위주)","angle":"이 곳에 맞는 숏폼 첫 주제 아이디어 한 줄","contact":"공식 문의 경로(예: 홈페이지 상담 게시판, 카카오톡 채널, 대표 전화)","source":"근거로 확인한 주소 하나"}]}`;
+}
+function pfMsgPrompt(p){
+  const c = CATS[p.cat] || {label:"전문직", who:"대표님"};
+  return `너는 '전문직 숏폼 대행' 프리랜서([나])다. 아래 [업체]에 처음 연락할 때 쓸 문구를 만든다.
+
+[원칙]
+- 처음 보는 사이다. 짧고 정중하게, 이 업체를 실제로 살펴봤다는 것이 드러나게 [업체]의 숏폼 현황·주제 아이디어를 한 가지만 짚는다.
+- 광고성 연락이므로 정보통신망법을 지킨다: 메시지 첫머리에 "(광고)"를 붙이고, 보내는 사람(활동명)을 밝히고, 마지막 줄에 수신 거부 방법을 적는다("원하지 않으시면 '수신거부'라고 답장 주세요. 다시 연락드리지 않겠습니다.").
+- 바로 계약을 권하지 않는다. "숏폼 주제 3개를 정리해 드려도 될까요?"처럼 상대가 받아도 될지 먼저 묻는 한 가지 제안으로 끝낸다.
+- 조회수·매출·환자 수를 보장하지 않는다. [나]에 없는 경력·사례·수치는 지어내지 않는다. 업종 광고 규정을 지킨다: ${c.rules||"결과 보장·비교·비방 금지"}
+- 호칭은 ${c.who||"대표님"}. 이모지·느낌표 남발 금지.
+
+[나]
+${meBlock()}
+
+[업체]
+상호: ${p.name}
+업종: ${c.label}${p.sub?` / ${p.sub}`:""}
+지역: ${p.addr||p.region}
+숏폼 현황: ${p.shortform||"확인 안 됨"} — ${p.why||""}
+주제 아이디어: ${p.angle||""}
+공식 문의 경로: ${p.contact||"확인 안 됨"}
+
+[출력] 다른 말 없이 JSON 객체 하나만:
+{"dm":"공식 문의 채널(카카오톡 채널·인스타 DM·홈페이지 상담 게시판)에 남길 메시지, 5~8줄","call":"대표 전화로 걸었을 때 첫 30초 말할 내용. 첫 문장에서 광고 목적의 연락임을 밝히고, 원하지 않으면 바로 끝낸다","topics":["이 업체에 맞는 숏폼 주제 3개"],"check":["연락 전에 확인할 것 1~2개"]}`;
+}
+async function askWebJSON(key, group, prompt){
+  if(busy[key]) return null;
+  if(inClaude){ lastErr[key] = "전문직 찾기는 인터넷 검색이 필요해서, 바탕화면·휴대폰 앱(내 Claude API 키)에서만 쓸 수 있어요."; render(); return null; }
+  if(!K.anthropic.trim()){ lastErr[key] = errCopy({code:"no_sample"}); S.aiModal = true; render(); return null; }
+  const ctl = startBusy(key, group); render();
+  try{
+    const md = modeOf();
+    const base = Object.assign({model:md[3], max_tokens:16000}, JSON.parse(JSON.stringify(md[4])));
+    if(md[0]==="fast") base.output_config = {effort:"medium"};
+    const tools = [{type:"web_search_20260209", name:"web_search", max_uses:8, user_location:{type:"approximate", country:"KR", timezone:"Asia/Seoul"}}];
+    const post = async body => {
+      const headers = {"content-type":"application/json","x-api-key":K.anthropic.trim(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"};
+      if(body.fallbacks) headers["anthropic-beta"] = "server-side-fallback-2026-07-01";
+      try{ return await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers,body:JSON.stringify(body),signal:ctl.signal}); }
+      catch(e){ if(e && e.name==="AbortError") throw {code:"cancelled"}; throw {code:"network"}; }
+    };
+    let messages = [{role:"user", content:prompt}], text = "";
+    for(let turn=0; turn<4; turn++){
+      const body = Object.assign({}, base, {messages, tools});
+      let res = await post(body);
+      if(!res.ok && res.status===400 && (body.fallbacks||body.thinking)){ let j=null; try{ j=await res.clone().json(); }catch(_){} if(j && /fallback|thinking|between_tools/i.test(JSON.stringify(j))){ delete base.fallbacks; delete base.thinking; res = await post(Object.assign({}, base, {messages, tools})); } }
+      if(!res.ok){ let j=null; try{ j=await res.json(); }catch(_){} throw apiErr(res.status, j); }
+      const j = await res.json();
+      if(j.stop_reason==="refusal") throw {code:"refused"};
+      const content = arr(j.content);
+      text = content.filter(b=>b.type==="text").map(b=>b.text).join("");
+      if(busy[key]){ busy[key].chars = text.length; paintMeta(key); }
+      if(j.stop_reason!=="pause_turn") break;
+      messages = messages.concat([{role:"assistant", content}]);
+    }
+    const v = looseJSON(text); if(v===undefined) throw {code:"invalid_json"};
+    return v;
+  }catch(e){ if(!e || e.code!=="cancelled"){ lastErr[key] = errCopy(e); aiFail(e); } return null; }
+  finally{ delete busy[key]; render(); }
+}
+const pfLink = (u,l) => /^https?:\/\//.test(str(u)) ? `<a class="link" href="${h(u)}" target="_blank" rel="noopener">${l}</a>` : "";
+function prospectsCSV(){
+  const q = v => `"${str(v).replace(/"/g,'""')}"`;
+  const head = ["점수","상호","업종","세부","지역","주소","대표 전화","홈페이지","유튜브","인스타그램","블로그","숏폼 현황","이유","첫 주제 아이디어","공식 문의 경로","출처","찾은 날"];
+  const rows = S.prospects.slice().sort((a,b)=>(+b.score||0)-(+a.score||0)).map(p=>[p.score,p.name,catLabel(p.cat),p.sub,p.region,p.addr,p.phone,p.web,p.youtube,p.instagram,p.blog,p.shortform,p.why,p.angle,p.contact,p.source,fmtDate(p.at)].map(q).join(","));
+  return [head.map(q).join(",")].concat(rows).join("\r\n");
+}
+function leadsFind(){
+  const f = S.pf, key = "find", cat = CATS[f.cat] || CATS.doctor;
+  const list = S.prospects.slice().sort((a,b)=>(+b.score||0)-(+a.score||0));
+  const sel = S.prospects.find(x=>x.id===S.pfSel);
+  const form = `<div class="card fields"><div><div class="eyebrow">FIND PROFESSIONALS</div><h3 style="margin-top:4px">어느 지역의 어떤 전문직을 찾을까요?</h3><p class="hint">AI가 인터넷 검색으로 실제 업체를 찾아, <b>숏폼이 필요해 보이는 곳부터</b> 점수를 매겨 정리합니다.</p></div>
+      <div><span class="label">업종</span><div class="row">${ALLCATS.map(k=>`<button class="chip" data-act="pfcat" data-k="${k}" aria-pressed="${f.cat===k}">${CATS[k].label}</button>`).join("")}</div></div>
+      <div class="grid2" style="gap:12px"><div class="field"><label class="label" for="pf-sub">세부 분야 <small>선택</small></label><select id="pf-sub" data-pf="sub"><option value="">전체</option>${arr(cat.subs).map(s=>`<option ${f.sub===s?"selected":""}>${h(s)}</option>`).join("")}</select></div>
+        <div class="field"><label class="label" for="pf-region">지역 <small>구·동·역 이름까지 쓰면 정확해요</small></label><input type="text" id="pf-region" data-pf="region" value="${h(f.region)}" placeholder="예) 서울 강남구 / 부산 해운대 / 분당 정자역"></div></div>
+      <div class="row between"><div class="row"><span class="muted small">한 번에</span>${[10,20].map(n=>`<button class="chip" data-act="pfn" data-k="${n}" aria-pressed="${+f.n===n}">${n}곳</button>`).join("")}</div>
+        <div class="row"><button class="btn cta" data-act="genfind" ${busy[key]?"disabled":""}>${IC.scan}찾기</button>${list.length?`<button class="btn ghost sm" data-act="genfind" data-more="1" ${busy[key]?"disabled":""}>겹치지 않게 더 찾기</button>`:""}</div></div>
+      <p class="hint">한 번 찾을 때 검색 몇 번과 AI 사용료로 보통 <b>200~500원</b>이 듭니다(내 API 키에서 차감). 1~3분 걸려요.</p></div>`;
+  const rule = `<div class="note" style="margin-bottom:16px">${IC.info}<span><b>이메일·개인 연락처는 모으지 않습니다.</b> 업체가 공개한 대표 정보와 공식 채널만 정리해요. 홈페이지에서 이메일을 자동으로 모으는 것, 동의 없이 광고 메시지를 보내는 것은 정보통신망법(제50조·제50조의2) 위반입니다. 연락은 한 곳씩 직접, 광고임을 밝히고, 거부하면 다시 하지 않는 방식으로 하세요.</span></div>`;
+  const row = p => { const sc=Math.max(0,Math.min(100,+p.score||0));
+    return `<tr class="${p.id===S.pfSel?"sel":""}"><td style="text-align:center"><b style="font-family:var(--display);font-size:18px">${sc}</b></td>
+      <td><b>${h(p.name)}</b><div class="small muted">${h(catLabel(p.cat))}${p.sub?` · ${h(p.sub)}`:""} · ${h(p.addr||p.region)}</div>${p.phone?`<div class="small">${h(p.phone)}</div>`:""}</td>
+      <td class="small">${[pfLink(p.web,"홈페이지"),pfLink(p.youtube,"유튜브"),pfLink(p.instagram,"인스타"),pfLink(p.blog,"블로그")].filter(Boolean).join(" · ")||'<span class="muted">확인 안 됨</span>'}<div style="margin-top:4px"><span class="pill">${h(PF_SHORT[p.shortform]||p.shortform||"확인 안 됨")}</span></div></td>
+      <td class="small">${h(p.why)}${p.angle?`<div class="muted" style="margin-top:4px">첫 주제 · ${h(p.angle)}</div>`:""}</td>
+      <td><div class="stack" style="gap:6px"><button class="btn xs" data-act="pfsel" data-id="${p.id}">${IC.msg}첫 연락 문구</button><button class="btn xs ghost" data-act="pfclient" data-id="${p.id}">${IC.user}고객 등록</button><button class="link small" data-act="pfdel" data-id="${p.id}">지우기</button></div></td></tr>`; };
+  const table = list.length ? `<div class="card" style="margin-top:16px"><div class="card-h"><div><div class="eyebrow">RESULTS · ${list.length}곳</div><h2 style="margin-top:4px">숏폼 기회 점수 순</h2><p class="hint">점수가 높을수록 숏폼이 비어 있거나 멈춘 곳입니다. 공식 채널을 직접 열어 한 번 더 확인하세요.</p></div>
+      <div class="row"><button class="btn sm ghost" data-act="pfcsv">${IC.file}엑셀용 CSV 저장</button><button class="link" data-act="pfclear">목록 비우기</button></div></div>
+      <div style="overflow-x:auto"><table class="tbl"><thead><tr><th style="width:56px">점수</th><th>업체</th><th style="width:170px">채널 · 숏폼</th><th>이유 · 첫 주제</th><th style="width:118px"></th></tr></thead><tbody>${list.map(row).join("")}</tbody></table></div></div>`
+    : (busy[key]?"":`<div class="empty" style="margin-top:16px">${STRIPES}<b>아직 찾은 곳이 없어요</b><span>업종과 지역을 고르고 '찾기'를 눌러 보세요.</span></div>`);
+  let detail = "";
+  if(sel){
+    const mk = "pfmsg:"+sel.id, m = sel.msg;
+    const blk = (t,x,id) => `<div><div class="row between" style="margin-bottom:6px"><span class="label" style="margin:0">${h(t)}</span>${copyBtn(id,x,"복사","btn xs ghost")}</div><pre class="out" style="max-height:260px">${h(x)}</pre></div>`;
+    detail = `<div class="card" style="margin-top:16px"><div class="card-h"><div><div class="eyebrow">FIRST CONTACT</div><h2 style="margin-top:4px">${h(sel.name)} · 첫 연락 문구</h2><p class="hint">공식 문의 경로: ${h(sel.contact||"확인 안 됨")}</p></div><button class="link" data-act="pfsel" data-id="">닫기</button></div>
+      ${statusHTML(mk,"pfmsg")}
+      ${m?`<div class="stack">${blk("공식 채널 메시지 (카카오 채널·DM·상담 게시판)",str(m.dm),"pf-dm")}${blk("대표 전화 첫 30초",str(m.call),"pf-call")}${arr(m.topics).length?blk("이 업체 맞춤 숏폼 주제 3개",arr(m.topics).map((x,i)=>`${i+1}. ${x}`).join("\n"),"pf-tp"):""}
+        ${arr(m.check).length?`<div class="note">${IC.alert}<span>${arr(m.check).map(h).join("<br>")}</span></div>`:""}</div>
+        <div class="row" style="margin-top:12px"><button class="link" data-act="pfmsg" data-id="${sel.id}">다시 만들기</button></div>`
+      :`<div class="row"><button class="btn" data-act="pfmsg" data-id="${sel.id}" ${busy[mk]?"disabled":""}>${IC.spark}문구 만들기</button><span class="muted small">'내 소개'에 적은 정보로 씁니다. 광고 표기와 수신 거부 문구가 자동으로 들어갑니다.</span></div>`}</div>`;
+  }
+  return rule + form + `<div style="margin-top:16px">${statusHTML(key,"find")}</div>` + detail + table;
+}
+
 function leadsPost(){
   const V = S.viral, key = "viral";
   const tg = S.me.targets.filter(k=>CATS[k]); const targets = tg.length?tg:ALLCATS;
@@ -2879,6 +3018,39 @@ document.addEventListener("click", async e => {
       save(); render(); return;
     }
     case "genpost": { const it=S.posts.find(x=>x.id===b.dataset.id); if(it) await genPost(it); return; }
+    case "pfcat": S.pf.cat=b.dataset.k; S.pf.sub=""; break;
+    case "pfn": S.pf.n=+b.dataset.k; break;
+    case "genfind": {
+      const f=S.pf, region=str(f.region).trim();
+      if(!region){ toast("지역을 먼저 적어 주세요. 예) 서울 강남구"); const el=document.getElementById("pf-region"); if(el) el.focus(); return; }
+      const more=!!b.dataset.more, ex=more?S.prospects.map(x=>x.name):[];
+      const out=await askWebJSON("find","find",findPrompt(f.cat,f.sub,region,f.n,ex));
+      const items=out&&arr(out.items);
+      if(items){
+        let added=0; const seen=new Set(S.prospects.map(x=>(x.name+"|"+x.addr).replace(/\s/g,"")));
+        items.forEach(x=>{ if(!x||!str(x.name).trim()) return; const k=(str(x.name)+"|"+str(x.addr)).replace(/\s/g,""); if(seen.has(k)) return; seen.add(k);
+          S.prospects.push({id:uid(),at:now(),cat:f.cat,sub:f.sub,region,name:str(x.name),addr:str(x.addr),phone:str(x.phone),web:str(x.web),youtube:str(x.youtube),instagram:str(x.instagram),blog:str(x.blog),shortform:str(x.shortform)||"확인 안 됨",score:Math.max(0,Math.min(100,parseInt(x.score,10)||0)),why:str(x.why),angle:str(x.angle),contact:str(x.contact),source:str(x.source),msg:null}); added++; });
+        toast(added?`${added}곳을 찾았어요. 점수가 높은 곳부터 확인해 보세요.`:"새로 찾은 곳이 없어요. 지역을 조금 넓혀 보세요.");
+      }
+      break;
+    }
+    case "pfsel": S.pfSel=b.dataset.id||null; break;
+    case "pfmsg": {
+      const p=S.prospects.find(x=>x.id===b.dataset.id); if(!p) return;
+      const out=await askJSON("pfmsg:"+p.id,"pfmsg",pfMsgPrompt(p));
+      if(out && typeof out==="object" && out.dm){ p.msg=out; toast("첫 연락 문구를 만들었어요."); }
+      break;
+    }
+    case "pfclient": {
+      const p=S.prospects.find(x=>x.id===b.dataset.id); if(!p) return;
+      const n=blankClient(); n.info.cat=p.cat; n.info.sub=p.sub; n.info.name=p.name; n.info.addr=p.addr||p.region;
+      n.info.channels=[p.web&&`홈페이지 ${p.web}`,p.youtube&&`유튜브 ${p.youtube}`,p.instagram&&`인스타 ${p.instagram}`,p.blog&&`블로그 ${p.blog}`,`숏폼 현황: ${p.shortform}`].filter(Boolean).join(" / ");
+      S.clients.push(n); S.clientId=n.id; S.view="client"; n.step="info";
+      toast("고객으로 등록했어요. 상담 내용을 채우면 주제·제안서를 만들 수 있어요."); break;
+    }
+    case "pfdel": { const id=b.dataset.id; S.prospects=S.prospects.filter(x=>x.id!==id); if(S.pfSel===id) S.pfSel=null; break; }
+    case "pfclear": if(confirm("찾은 업체 목록을 모두 지울까요?")){ S.prospects=[]; S.pfSel=null; } break;
+    case "pfcsv": saveFile(`전문직찾기_${catLabel(S.pf.cat)}_${fmtDate(now())}.csv`, prospectsCSV()); return;
     case "soomsample": S.soom.req=SOOM_SAMPLE; break;
     case "soomsel": S.soomSel=b.dataset.id||null; break;
     case "gensoom": {
@@ -2920,6 +3092,7 @@ document.addEventListener("input", e => {
   if(el.dataset.f && c){ c.info[el.dataset.f]=el.value; updateQ(c); if(el.dataset.f==="name") renderRail(); save(); }
   else if(el.dataset.me){ S.me[el.dataset.me]=el.value; save(); }
   else if(el.dataset.soom){ S.soom[el.dataset.soom]=el.value; save(); }
+  else if(el.dataset.pf){ S.pf[el.dataset.pf]=el.value; save(); }
   else if(el.dataset.price!=null){ const v=parseInt(el.value.replace(/[^0-9]/g,""),10); if(!isNaN(v)){ S.pricing[+el.dataset.price].p=v; save(); } }
   else if(el.dataset.rd){ S.refDraft[el.dataset.rd]=el.value; save(); }
   else if(el.hasAttribute("data-tq")){ c.q=el.value; const pos=el.selectionStart; render(); const n=document.getElementById("t-q"); if(n){ n.focus(); n.setSelectionRange(pos,pos); } }
